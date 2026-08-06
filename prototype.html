@@ -1,0 +1,2590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>EasyBlot — Mobile Prototype</title>
+<style>
+/* ============================================================
+   EasyBlot — UX prototype
+   Design system: pure black & white + one neutral gray scale.
+   Red  (#D64545) reserved for destructive actions only.
+   Green(#2E7D4F) reserved for success/complete indicators only.
+   ============================================================ */
+
+:root{
+  --bg:#FFFFFF;
+  --ink:#111111;
+  --g1:#F5F5F5;   /* fills / pressed states */
+  --g2:#E5E5E5;   /* hairline borders, dividers */
+  --g3:#999999;   /* tertiary text, placeholders */
+  --g4:#666666;   /* secondary text */
+  --red:#D64545;  /* destructive ONLY */
+  --green:#2E7D4F;/* success/complete ONLY */
+  --r-sm:10px;
+  --r-md:12px;
+  --r-lg:14px;
+  --font:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",Roboto,sans-serif;
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;}
+body{
+  font-family:var(--font);
+  background:var(--g1);
+  color:var(--ink);
+  display:flex;align-items:center;justify-content:center;
+  min-height:100vh;padding:24px 0;
+}
+
+/* ---------- Phone frame (desktop chrome only) ---------- */
+.phone{
+  width:390px;height:844px;
+  background:var(--bg);
+  border:1px solid var(--g2);
+  border-radius:44px;
+  box-shadow:0 12px 48px rgba(17,17,17,.10);
+  position:relative;overflow:hidden;
+  display:flex;flex-direction:column;
+}
+.notch{
+  position:absolute;top:10px;left:50%;transform:translateX(-50%);
+  width:112px;height:26px;background:var(--ink);border-radius:14px;z-index:90;
+}
+.statusbar{
+  height:52px;flex:0 0 52px;display:flex;align-items:flex-end;
+  justify-content:space-between;padding:0 26px 4px;
+  font-size:12px;font-weight:600;letter-spacing:-.01em;z-index:85;
+}
+.statusbar .sb-right{display:flex;gap:5px;align-items:center;}
+.sb-bar{width:16px;height:9px;border:1px solid var(--ink);border-radius:2px;position:relative;}
+.sb-bar::after{content:"";position:absolute;inset:1.5px;right:5px;background:var(--ink);border-radius:1px;}
+
+/* ---------- Screen plumbing ---------- */
+.viewport{flex:1;position:relative;overflow:hidden;}
+.screen{
+  position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;
+  display:none;padding:0 20px 96px;
+  -webkit-overflow-scrolling:touch;
+}
+.screen.active{display:block;}
+.screen::-webkit-scrollbar{width:0;}
+
+/* Auth + pushed detail views cover the whole phone, tab bar included.
+   z-index sits above .tabbar (50) so the reply bar is not occluded. */
+.overlay-screen{
+  position:absolute;inset:0;background:var(--bg);z-index:58;
+  display:none;flex-direction:column;
+}
+.overlay-screen.active{display:flex;}
+
+/* ---------- Typography ---------- */
+h1{font-size:27px;font-weight:700;letter-spacing:-.035em;margin:0;line-height:1.15;}
+h2{font-size:20px;font-weight:700;letter-spacing:-.03em;margin:0;}
+.eyebrow{
+  font-size:11px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;
+  color:var(--g3);margin:0 0 10px;
+}
+.sub{font-size:14px;color:var(--g4);line-height:1.45;margin:6px 0 0;}
+.caption{font-size:12px;color:var(--g3);line-height:1.45;}
+.mono{font-variant-numeric:tabular-nums;}
+
+.page-head{padding:14px 0 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+
+/* ---------- Cards ---------- */
+.card{
+  border:1px solid var(--g2);border-radius:var(--r-lg);
+  padding:16px;background:var(--bg);margin-bottom:14px;
+}
+.card.flat{background:var(--g1);border-color:transparent;}
+.card.muted{background:var(--g1);border-color:transparent;}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.divider{height:1px;background:var(--g2);margin:14px -16px;}
+
+/* ---------- Avatars ---------- */
+.avatar{
+  width:36px;height:36px;border-radius:50%;background:var(--ink);color:#fff;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:600;letter-spacing:-.02em;flex:0 0 auto;
+}
+.avatar.outline{background:var(--bg);color:var(--ink);border:1px solid var(--g2);}
+.avatar.sm{width:28px;height:28px;font-size:11px;}
+.avatar.lg{width:64px;height:64px;font-size:22px;}
+
+/* Live-activity indicator: a filled dot clipped to the avatar corner,
+   meaning "running a wash right now". Grayscale — no status colour. */
+.av-wrap{position:relative;flex:0 0 auto;display:inline-flex;}
+.av-dot{
+  position:absolute;right:-1px;bottom:-1px;width:11px;height:11px;border-radius:50%;
+  background:var(--ink);border:2px solid var(--bg);
+}
+.av-wrap.lg .av-dot{width:16px;height:16px;border-width:3px;right:1px;bottom:1px;}
+/* Ring pulse so an active user reads as live rather than merely flagged. */
+.av-dot::after{
+  content:"";position:absolute;inset:-3px;border-radius:50%;
+  border:1px solid var(--ink);opacity:.5;animation:ping 2s ease-out infinite;
+}
+@keyframes ping{0%{transform:scale(.7);opacity:.55;}70%,100%{transform:scale(1.5);opacity:0;}}
+
+/* Reddit-style user title (flair). Earned from forum activity, shown
+   wherever a display name appears. Never encodes institution. */
+.flair{
+  display:inline-block;font-size:10px;font-weight:600;letter-spacing:.02em;
+  padding:2px 7px;border-radius:99px;border:1px solid var(--g2);
+  color:var(--g4);white-space:nowrap;vertical-align:1px;
+}
+.flair.top{border-color:var(--ink);color:var(--ink);}
+
+/* ---------- Buttons ---------- */
+.btn{
+  font-family:var(--font);font-size:14px;font-weight:600;letter-spacing:-.01em;
+  border:1px solid var(--ink);background:var(--ink);color:#fff;
+  border-radius:var(--r-sm);padding:12px 16px;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  transition:opacity .12s ease,background .12s ease;
+}
+.btn:active{opacity:.72;}
+.btn.block{width:100%;}
+.btn.ghost{background:var(--bg);color:var(--ink);border-color:var(--g2);}
+.btn.ghost:active{background:var(--g1);}
+.btn.danger{background:var(--bg);color:var(--red);border-color:var(--red);}
+.btn.danger-solid{background:var(--red);border-color:var(--red);color:#fff;}
+.btn.sm{padding:9px 12px;font-size:13px;border-radius:9px;}
+.btn:disabled{opacity:.32;cursor:not-allowed;}
+.linkbtn{
+  background:none;border:none;padding:0;font-family:var(--font);font-size:13px;
+  font-weight:600;color:var(--g4);text-decoration:underline;
+  text-underline-offset:3px;cursor:pointer;
+}
+.linkbtn.danger{color:var(--red);}
+.linkbtn.tiny{font-size:11px;color:var(--g3);font-weight:500;}
+.linkbtn:disabled{opacity:.35;cursor:not-allowed;}
+
+/* ---------- Forms ---------- */
+.field{margin-bottom:15px;position:relative;}
+.field label{display:block;font-size:12px;font-weight:600;color:var(--g4);margin-bottom:7px;letter-spacing:-.01em;}
+.input{
+  width:100%;font-family:var(--font);font-size:15px;color:var(--ink);
+  border:1px solid var(--g2);border-radius:var(--r-sm);
+  padding:12px 13px;background:var(--bg);outline:none;
+}
+.input::placeholder{color:var(--g3);}
+.input:focus{border-color:var(--ink);}
+.input.error{border-color:var(--red);}
+.input:disabled{background:var(--g1);color:var(--g3);}
+.err{font-size:12px;color:var(--red);margin-top:6px;display:none;}
+.err.show{display:block;}
+.ok-note{font-size:12px;color:var(--green);margin-top:6px;}
+.suggest{
+  position:absolute;top:100%;left:0;right:0;z-index:20;background:var(--bg);
+  border:1px solid var(--g2);border-radius:var(--r-sm);margin-top:4px;
+  max-height:168px;overflow-y:auto;box-shadow:0 6px 20px rgba(17,17,17,.08);display:none;
+}
+.suggest.show{display:block;}
+.suggest div{padding:11px 13px;font-size:14px;border-bottom:1px solid var(--g2);cursor:pointer;}
+.suggest div:last-child{border-bottom:none;}
+.suggest div:active{background:var(--g1);}
+
+/* Search field (Forum) */
+.search{position:relative;margin-bottom:12px;}
+.search .input{padding-left:34px;font-size:14px;}
+.search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);
+  width:15px;height:15px;stroke:var(--g3);fill:none;stroke-width:1.7;pointer-events:none;}
+.search .clear{position:absolute;right:9px;top:50%;transform:translateY(-50%);}
+
+/* ---------- Toggle ---------- */
+.toggle{
+  width:44px;height:26px;border-radius:13px;border:1px solid var(--g2);
+  background:var(--bg);position:relative;cursor:pointer;flex:0 0 auto;transition:.15s;
+}
+.toggle::after{
+  content:"";position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;
+  background:var(--g3);transition:.15s;
+}
+.toggle.on{background:var(--ink);border-color:var(--ink);}
+.toggle.on::after{left:21px;background:#fff;}
+.toggle.disabled{opacity:.35;cursor:not-allowed;}
+
+/* ---------- Status dot / pills ---------- */
+.dot{width:8px;height:8px;border-radius:50%;flex:0 0 auto;}
+.dot.online{background:var(--ink);}
+.dot.offline{background:var(--bg);border:1px solid var(--g3);}
+.pill{
+  font-size:11px;font-weight:600;letter-spacing:-.01em;padding:4px 9px;
+  border-radius:99px;border:1px solid var(--g2);color:var(--g4);white-space:nowrap;
+}
+.pill.solid{background:var(--ink);border-color:var(--ink);color:#fff;}
+.pill.dashed{border-style:dashed;}
+.pill.ok{border-color:var(--green);color:var(--green);}
+
+/* ---------- Progress ---------- */
+.progress{height:4px;border-radius:2px;background:var(--g2);overflow:hidden;}
+.progress > i{display:block;height:100%;background:var(--ink);width:0;transition:width .4s linear;}
+.progress.idle > i{background:var(--g3);}
+
+/* ---------- Segmented control ---------- */
+.seg{display:flex;background:var(--g1);border-radius:var(--r-sm);padding:3px;gap:3px;margin-bottom:14px;}
+.seg button{
+  flex:1;font-family:var(--font);font-size:13px;font-weight:600;letter-spacing:-.01em;
+  border:none;background:none;color:var(--g4);padding:8px 6px;border-radius:8px;cursor:pointer;
+}
+.seg button.active{background:var(--bg);color:var(--ink);border:1px solid var(--g2);}
+
+/* ---------- Chips ---------- */
+.chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:12px;}
+.chips::-webkit-scrollbar{height:0;}
+.chip{
+  font-size:12.5px;font-weight:600;letter-spacing:-.01em;white-space:nowrap;
+  padding:7px 13px;border-radius:99px;border:1px solid var(--g2);
+  background:var(--bg);color:var(--g4);cursor:pointer;
+}
+.chip.active{background:var(--ink);border-color:var(--ink);color:#fff;}
+
+/* ---------- Log strip (mirrors easyblot/status/log) ---------- */
+.log{border:1px solid var(--g2);border-radius:var(--r-lg);overflow:hidden;}
+.log-line{
+  display:flex;gap:9px;padding:10px 13px;font-size:12.5px;color:var(--g4);
+  border-bottom:1px solid var(--g2);line-height:1.35;
+}
+.log-line:last-child{border-bottom:none;}
+.log-line .t{color:var(--g3);font-size:11.5px;flex:0 0 54px;padding-top:1px;}
+.log-line.fresh{background:var(--g1);}
+
+/* ---------- List rows ---------- */
+.lrow{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid var(--g2);}
+.lrow:last-child{border-bottom:none;}
+.lrow.tappable{cursor:pointer;}
+.rank{width:22px;font-size:13px;font-weight:700;color:var(--g3);font-variant-numeric:tabular-nums;}
+.grow{flex:1;min-width:0;}
+.name{font-size:14.5px;font-weight:600;letter-spacing:-.015em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* Name + flair on one line: the name ellipsises, the title never gets clipped. */
+.name-row{display:flex;align-items:center;gap:6px;min-width:0;}
+.name-row .name{min-width:0;flex:0 1 auto;}
+.name-row .flair{flex:0 0 auto;}
+.meta{font-size:12px;color:var(--g3);margin-top:2px;}
+.count{font-size:15px;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums;}
+
+/* Pinned "your rank" row — sits outside the top-10 list */
+.pinned{
+  margin-top:10px;border:1px dashed var(--g2);border-radius:var(--r-lg);
+  padding:2px 14px;background:var(--g1);
+}
+
+/* ---------- Tab bar ---------- */
+.tabbar{
+  position:absolute;bottom:0;left:0;right:0;height:78px;z-index:50;
+  background:rgba(255,255,255,.94);backdrop-filter:blur(12px);
+  border-top:1px solid var(--g2);display:flex;padding-bottom:14px;
+}
+.tab{
+  flex:1;background:none;border:none;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  color:var(--g3);font-family:var(--font);font-size:10px;font-weight:600;letter-spacing:-.005em;
+}
+.tab svg{width:22px;height:22px;stroke:currentColor;stroke-width:1.6;fill:none;}
+.tab.active{color:var(--ink);}
+.tab.active svg{fill:currentColor;stroke:currentColor;}
+
+/* ---------- FAB ---------- */
+.fab{
+  position:absolute;right:20px;bottom:94px;z-index:45;
+  width:52px;height:52px;border-radius:50%;background:var(--ink);color:#fff;
+  border:none;cursor:pointer;font-size:26px;font-weight:300;line-height:1;
+  display:none;align-items:center;justify-content:center;
+  box-shadow:0 6px 18px rgba(17,17,17,.22);
+}
+.fab.show{display:flex;}
+
+/* ---------- Sheets ---------- */
+.scrim{
+  position:absolute;inset:0;background:rgba(17,17,17,.28);z-index:70;
+  display:none;align-items:flex-end;
+}
+.scrim.active{display:flex;}
+.sheet{
+  width:100%;max-height:82%;background:var(--bg);
+  border-radius:20px 20px 0 0;box-shadow:0 -8px 32px rgba(17,17,17,.14);
+  display:flex;flex-direction:column;animation:up .22s ease-out;
+}
+@keyframes up{from{transform:translateY(24px);opacity:.6;}to{transform:none;opacity:1;}}
+.sheet-head{
+  padding:16px 20px 12px;border-bottom:1px solid var(--g2);
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+}
+.sheet-body{padding:16px 20px 20px;overflow-y:auto;}
+.sheet-body::-webkit-scrollbar{width:0;}
+.grab{width:34px;height:4px;border-radius:2px;background:var(--g2);margin:8px auto 0;}
+
+/* ---------- Modal (styled replacement for confirm()/prompt()) ---------- */
+.modal-scrim{
+  position:absolute;inset:0;background:rgba(17,17,17,.32);z-index:80;
+  display:none;align-items:center;justify-content:center;padding:0 26px;
+}
+.modal-scrim.active{display:flex;}
+.modal{
+  width:100%;background:var(--bg);border-radius:16px;padding:20px;
+  box-shadow:0 10px 36px rgba(17,17,17,.18);animation:pop .16s ease-out;
+  max-height:82%;overflow-y:auto;
+}
+.modal::-webkit-scrollbar{width:0;}
+@keyframes pop{from{transform:scale(.97);opacity:.5;}to{transform:none;opacity:1;}}
+.modal h2{margin-bottom:8px;}
+.modal-actions{display:flex;gap:9px;margin-top:20px;}
+.modal-actions .btn{flex:1;}
+
+/* ---------- Inline confirm strip (Stop All) ---------- */
+.confirm-strip{
+  border:1px solid var(--red);border-radius:var(--r-sm);
+  padding:12px;margin-bottom:20px;
+}
+.confirm-strip .msg{font-size:13px;font-weight:600;letter-spacing:-.015em;color:var(--ink);}
+.confirm-strip .why{font-size:12px;color:var(--g4);margin-top:3px;line-height:1.4;}
+.confirm-strip .acts{display:flex;gap:9px;margin-top:12px;}
+.confirm-strip .acts .btn{flex:1;}
+
+/* ---------- Pump rows (cmd/pump) ---------- */
+.pump{display:flex;align-items:center;gap:11px;padding:12px 0;border-bottom:1px solid var(--g2);}
+.pump:last-child{border-bottom:none;}
+.pnum{
+  width:30px;height:30px;border-radius:8px;border:1px solid var(--g2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:12.5px;font-weight:700;flex:0 0 auto;
+}
+.pump.on .pnum{background:var(--ink);border-color:var(--ink);color:#fff;}
+.pump.locked{opacity:.55;}
+.dur{
+  width:62px;font-family:var(--font);font-size:13px;text-align:center;
+  border:1px solid var(--g2);border-radius:8px;padding:8px 4px;outline:none;
+  font-variant-numeric:tabular-nums;
+}
+.dur:focus{border-color:var(--ink);}
+.dur:disabled{background:var(--g1);color:var(--g3);}
+
+/* ---------- Sequence builder (cmd/sequence) ---------- */
+.step{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--g2);}
+.step:last-child{border-bottom:none;}
+.step-n{
+  width:22px;height:22px;border-radius:50%;border:1px solid var(--g2);flex:0 0 auto;
+  display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--g4);
+}
+.iconbtn{
+  width:28px;height:28px;border-radius:7px;border:1px solid var(--g2);background:var(--bg);
+  cursor:pointer;font-size:13px;color:var(--g4);display:flex;align-items:center;justify-content:center;flex:0 0 auto;
+  font-family:var(--font);
+}
+.iconbtn:disabled{opacity:.3;cursor:not-allowed;}
+.iconbtn.danger{color:var(--red);}
+.empty{text-align:center;padding:26px 12px;color:var(--g3);font-size:13px;line-height:1.5;}
+.empty .btn{margin-top:14px;}
+
+/* ---------- Mini usage chart ---------- */
+.chart{display:flex;align-items:flex-end;gap:7px;height:56px;}
+.chart .bar{flex:1;background:var(--g2);border-radius:3px 3px 0 0;min-height:3px;}
+.chart .bar.hi{background:var(--ink);}
+.chart .bar.today{outline:1px solid var(--ink);outline-offset:1px;}
+.chart-x{display:flex;gap:7px;margin-top:7px;}
+.chart-x span{flex:1;text-align:center;font-size:10px;color:var(--g3);font-weight:600;}
+.chart-x span.today{color:var(--ink);}
+
+/* ---------- Thread detail ---------- */
+.navbar{
+  flex:0 0 auto;padding:14px 20px;border-bottom:1px solid var(--g2);
+  display:flex;align-items:center;gap:12px;
+}
+.navbar .title{font-size:15px;font-weight:600;letter-spacing:-.02em;flex:1;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.reply-bar{
+  flex:0 0 auto;padding:12px 16px 16px;border-top:1px solid var(--g2);
+  display:flex;gap:9px;align-items:center;background:var(--bg);
+}
+.post{padding:16px 0;border-bottom:1px solid var(--g2);}
+.post:last-child{border-bottom:none;}
+.post .body{font-size:14px;line-height:1.55;color:var(--ink);margin-top:9px;white-space:pre-wrap;}
+.owner-acts{display:flex;gap:14px;margin-top:10px;}
+</style>
+</head>
+<body>
+
+<div class="phone" id="phone">
+  <div class="notch"></div>
+  <div class="statusbar">
+    <span class="mono">9:41</span>
+    <span class="sb-right"><span>EasyBlot</span><span class="sb-bar"></span></span>
+  </div>
+
+  <div class="viewport" id="viewport">
+    <!-- ===== Tabbed screens ===== -->
+    <div class="screen" id="screen-home"></div>
+    <div class="screen" id="screen-leaderboard"></div>
+    <div class="screen" id="screen-forum"></div>
+    <div class="screen" id="screen-settings"></div>
+
+    <!-- ===== Full-cover overlay screens (auth + thread detail) ===== -->
+    <div class="overlay-screen" id="overlay-auth"></div>
+    <div class="overlay-screen" id="overlay-thread"></div>
+
+    <!-- ===== FAB (Forum only) ===== -->
+    <button class="fab" id="fab" onclick="openSheet('newpost')">+</button>
+
+    <!-- ===== Bottom tab bar ===== -->
+    <nav class="tabbar" id="tabbar"></nav>
+
+    <!-- ===== Bottom sheet host ===== -->
+    <div class="scrim" id="scrim" onclick="if(event.target===this)requestCloseSheet()">
+      <div class="sheet" id="sheet">
+        <div class="grab"></div>
+        <div class="sheet-head" id="sheet-head"></div>
+        <div class="sheet-body" id="sheet-body"></div>
+      </div>
+    </div>
+
+    <!-- ===== Modal host (styled confirm / small forms) ===== -->
+    <div class="modal-scrim" id="modal-scrim" onclick="if(event.target===this)closeModal()">
+      <div class="modal" id="modal"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   EasyBlot mobile prototype — vanilla JS, no build step, no storage.
+   All state lives in the objects below for the lifetime of the page.
+
+   MQTT contract this UI is designed against (firmware hookup later):
+     PUBLISH  easyblot/cmd/pump      {pump:1..6, action:"on"|"off", duration:<sec|null>}
+     PUBLISH  easyblot/cmd/sequence  {steps:[{pump:1..6, duration:<sec>}, ...]}
+     PUBLISH  easyblot/cmd/stop      {}                     // stop-all, all pumps off
+     SUBSCRIBE easyblot/status       {online:bool, pumps:[...], run:{...}}
+     SUBSCRIBE easyblot/status/log   {ts:<epoch>, msg:"<line>"}
+   Each render function below is 1:1 with a future React Native screen.
+   ================================================================ */
+
+/* ----------------------------------------------------------------
+   1. MOCK DATA
+   ---------------------------------------------------------------- */
+
+// Matches firmware PUMP_ROLES[] — index 0 is pump 1.
+const PUMP_ROLES = ['Primary','Secondary','Blocking','Wash Buffer','Drain','Recollect'];
+
+const currentUser = {
+  id:'me',                         // used for post/reply ownership checks
+  displayName:'Bharath',           // public — leaderboard + forum
+  realName:'Bharath Rajan',        // private — Settings only
+  initials:'BR',
+  email:'bharath@stanford.edu',    // read-only
+  password:'blotting123',          // prototype-only, for the change-password form
+  university:'Stanford University',// private unless showUniversity = true
+  showUniversity:false,            // privacy toggle, OFF by default
+  blotsWeek:4,
+  blotsTotal:61,
+  forumWeek:3,
+  forumTotal:22
+};
+
+// Universities are stored but NEVER rendered on leaderboard/forum —
+// proof that the anonymity rule holds across every public surface.
+// `activeNow` mirrors that user's device reporting a run in progress; on the
+// real build it comes from their easyblot/status presence, not a stored flag.
+const users = [
+  {id:'u1', displayName:'K. Nakamura',  initials:'KN', university:'UC Berkeley',            blotsWeek:14, blotsTotal:212, forumWeek:2, forumTotal:18, activeNow:true},
+  {id:'u2', displayName:'benchtop_rat', initials:'BR', university:'Johns Hopkins',          blotsWeek:11, blotsTotal:154, forumWeek:9, forumTotal:96, activeNow:false},
+  {id:'u3', displayName:'M. Osei',      initials:'MO', university:'University of Michigan', blotsWeek:9,  blotsTotal:188, forumWeek:1, forumTotal:7,  activeNow:false},
+  {id:'u4', displayName:'westernwitch', initials:'WW', university:'MIT',                    blotsWeek:8,  blotsTotal:97,  forumWeek:7, forumTotal:74, activeNow:true},
+  {id:'u5', displayName:'L. Petrov',    initials:'LP', university:'UT Southwestern',        blotsWeek:7,  blotsTotal:143, forumWeek:0, forumTotal:3,  activeNow:false},
+  {id:'u6', displayName:'D. Whitfield', initials:'DW', university:'Duke University',        blotsWeek:6,  blotsTotal:81,  forumWeek:4, forumTotal:41, activeNow:false},
+  {id:'u7', displayName:'pipette_jockey',initials:'PJ',university:'Yale University',        blotsWeek:5,  blotsTotal:64,  forumWeek:6, forumTotal:58, activeNow:true},
+  {id:'u8', displayName:'A. Iyer',      initials:'AI', university:'Caltech',                blotsWeek:3,  blotsTotal:119, forumWeek:2, forumTotal:29, activeNow:false},
+  {id:'u9', displayName:'S. Brennan',   initials:'SB', university:'Northwestern',           blotsWeek:2,  blotsTotal:38,  forumWeek:3, forumTotal:33, activeNow:false},
+  {id:'u10',displayName:'T. Ramos',     initials:'TR', university:'Emory University',       blotsWeek:5,  blotsTotal:72,  forumWeek:1, forumTotal:12, activeNow:false},
+  {id:'u11',displayName:'blot_ops',     initials:'BO', university:'Cornell University',     blotsWeek:4,  blotsTotal:55,  forumWeek:5, forumTotal:47, activeNow:true},
+  {id:'u12',displayName:'H. Lindqvist', initials:'HL', university:'University of Washington',blotsWeek:4, blotsTotal:90,  forumWeek:0, forumTotal:9,  activeNow:false}
+];
+
+const UNIVERSITIES = [
+  'Stanford University','Massachusetts Institute of Technology','Harvard University',
+  'UC Berkeley','UC San Francisco','UCLA','Johns Hopkins University','Yale University',
+  'Duke University','Northwestern University','University of Michigan','Caltech',
+  'Columbia University','Cornell University','University of Washington',
+  'UT Southwestern Medical Center','University of Pennsylvania','Washington University in St. Louis',
+  'University of Chicago','Rockefeller University','Baylor College of Medicine','Emory University'
+];
+
+const FORUM_CATEGORIES = ['All','Troubleshooting','Protocols','Hardware','General'];
+
+// authorId drives the edit/delete affordance — only 'me' content is editable.
+let threads = [
+  {
+    id:'t1', category:'Troubleshooting', authorId:'u1',
+    title:'Pump 5 (Drain) stalls partway through a 5-minute wash',
+    author:'K. Nakamura', authorInitials:'KN', lastActivity:'12m',
+    body:'Running a standard 3x5min TBST wash. Pump 5 primes fine but stalls around the 3-minute mark, then resumes if I cycle it off/on from Manual Control. Tubing is new. Anyone seen this on the current firmware?',
+    replies:[
+      {id:'r1a', authorId:'u3', author:'M. Osei', initials:'MO', time:'9m', body:'Check your occlusion setting on the pump head — mine did this when the tubing was seated a hair too tight. It draws current, browns out, and the ESP32 backs it off.'},
+      {id:'r1b', authorId:'u2', author:'benchtop_rat', initials:'BR', time:'4m', body:'Also worth watching the status/log stream while it happens. If you see a re-connect line right before the stall it is WiFi, not the pump.'}
+    ]
+  },
+  {
+    id:'t2', category:'Protocols', authorId:'u4',
+    title:'Sequence that works well for low-abundance phospho targets',
+    author:'westernwitch', authorInitials:'WW', lastActivity:'1h',
+    body:'Sharing what finally gave me clean phospho-ERK blots: 6 steps, blocking 300s, then 3x 240s wash buffer with a 30s drain between each. Recollect at the end to save antibody. Total unattended time ~28 min.',
+    replies:[
+      {id:'r2a', authorId:'u8', author:'A. Iyer', initials:'AI', time:'52m', body:'Do you recollect primary or secondary? I have been nervous about reusing secondary more than twice.'},
+      {id:'r2b', authorId:'u4', author:'westernwitch', initials:'WW', time:'40m', body:'Primary only. Secondary goes to waste — not worth the background.'},
+      {id:'r2c', authorId:'me', author:'Bharath', initials:'BR', time:'22m', body:'Copied this into my sequence builder verbatim. Will report back tomorrow.'}
+    ]
+  },
+  {
+    id:'t3', category:'Hardware', authorId:'u6',
+    title:'Best tubing durometer for the peristaltic heads?',
+    author:'D. Whitfield', authorInitials:'DW', lastActivity:'3h',
+    body:'We are burning through tubing every ~200 hours. Curious what everyone else is running — platinum-cured silicone vs PharMed. Cost difference is real at six pumps.',
+    replies:[
+      {id:'r3a', authorId:'u7', author:'pipette_jockey', initials:'PJ', time:'2h', body:'PharMed lasts roughly 3x longer for us. Higher up-front cost, fewer 2am floods.'},
+      {id:'r3b', authorId:'u1', author:'K. Nakamura', initials:'KN', time:'1h', body:'Seconding PharMed. Keep a silicone spare set for anything that touches antibody you plan to recollect.'}
+    ]
+  },
+  {
+    id:'t4', category:'Troubleshooting', authorId:'u9',
+    title:'Device drops off WiFi on our building guest network',
+    author:'S. Brennan', authorInitials:'SB', lastActivity:'5h',
+    body:'easyblot.local resolves at first, then the device goes Offline in the app after ~20 minutes. Guest network has a captive portal. Is a static IP the workaround here?',
+    replies:[
+      {id:'r4a', authorId:'u2', author:'benchtop_rat', initials:'BR', time:'4h', body:'Captive portals will kill it every time. Ask IT for a device VLAN or MAC allowlist entry — that fixed it for our floor.'},
+      {id:'r4b', authorId:'u3', author:'M. Osei', initials:'MO', time:'3h', body:'Runs already in progress finish locally even if the app disconnects, so you are not losing blots — just visibility.'}
+    ]
+  },
+  {
+    id:'t5', category:'Protocols', authorId:'me',
+    title:'Overnight 4C primary — leaving the device idle vs powered down',
+    author:'Bharath', authorInitials:'BR', lastActivity:'8h',
+    body:'For overnight primary incubations, do you leave the unit powered and idle in the cold room, or pull the membrane and run the washes in the morning?',
+    replies:[
+      {id:'r5a', authorId:'u6', author:'D. Whitfield', initials:'DW', time:'7h', body:'Powered and idle. Cold room has been fine for us over ~18 months.'},
+      {id:'r5b', authorId:'u4', author:'westernwitch', initials:'WW', time:'6h', body:'Same, but we schedule the wash sequence for the morning rather than letting it sit primed.'}
+    ]
+  },
+  {
+    id:'t6', category:'General', authorId:'u7',
+    title:'How many blots is everyone actually running per week?',
+    author:'pipette_jockey', authorInitials:'PJ', lastActivity:'1d',
+    body:'Genuinely curious how this scales across labs. We are at roughly 10-12/week across three people and the leaderboard suggests that is on the low side.',
+    replies:[
+      {id:'r6a', authorId:'u5', author:'L. Petrov', initials:'LP', time:'22h', body:'Six or seven here, but each one is a 4-target multiplex so the run time is longer.'},
+      {id:'r6b', authorId:'u9', author:'S. Brennan', initials:'SB', time:'20h', body:'Two. We are a small lab and I am the only one blotting. Still beats doing washes by hand.'}
+    ]
+  }
+];
+
+// Paired device — reflects easyblot/status retained payload.
+const device = {
+  name:'EasyBlot — Bay 2',
+  paired:true,
+  online:true,
+  wifi:'Ludlow-Lab-5G',
+  mdns:'easyblot.local'
+};
+
+// Six pumps. `on` + `remaining` mirror easyblot/status.
+let pumps = PUMP_ROLES.map((role,i)=>({
+  id:i+1, role, on:false,
+  remaining:null,      // seconds left, null = indefinite
+  durationInput:''     // UI-only: blank = run indefinitely
+}));
+
+// Mock in-flight run so Home has a live progress bar on first paint.
+// Mirrors the `run` object inside easyblot/status.
+let currentRun = {
+  active:true,
+  steps:[
+    {pump:3, duration:300}, {pump:5, duration:45},  {pump:4, duration:300},
+    {pump:5, duration:45},  {pump:4, duration:300}, {pump:6, duration:60}
+  ],
+  index:2,          // zero-based → "Step 3 of 6"
+  remaining:134,    // 2:14 left in the current step
+  protocolId:'p1',  // which saved protocol this run came from (null = ad-hoc)
+  protocolName:'Standard TBST wash (3×5)'
+};
+// The mock run is mid-flight, so pump 4 must already read as active.
+pumps[currentRun.steps[currentRun.index].pump - 1].on = true;
+pumps[currentRun.steps[currentRun.index].pump - 1].remaining = currentRun.remaining;
+
+// ---- Saved protocol library ---------------------------------------------
+// Protocols are a client-side concept only: the device never hears a name.
+// Running one publishes the same cmd/sequence {steps:[...]} payload as an
+// ad-hoc build, so nothing here changes the firmware contract.
+let savedProtocols = [
+  {
+    id:'p1', name:'Standard TBST wash (3×5)',
+    note:'Routine post-antibody wash. Drain between each cycle.',
+    steps:[{pump:3,duration:300},{pump:5,duration:45},{pump:4,duration:300},
+           {pump:5,duration:45},{pump:4,duration:300},{pump:6,duration:60}],
+    runCount:23, lastRun:'Today'
+  },
+  {
+    id:'p2', name:'Phospho-ERK — low abundance',
+    note:'Extended blocking, 3× 240s washes, recollect primary.',
+    steps:[{pump:3,duration:600},{pump:1,duration:300},{pump:5,duration:45},
+           {pump:4,duration:240},{pump:5,duration:45},{pump:4,duration:240},
+           {pump:5,duration:45},{pump:4,duration:240},{pump:6,duration:90}],
+    runCount:6, lastRun:'2d ago'
+  },
+  {
+    id:'p3', name:'Overnight primary — morning wash',
+    note:'Run after a 4°C overnight incubation.',
+    steps:[{pump:5,duration:60},{pump:4,duration:300},{pump:5,duration:45},
+           {pump:2,duration:1800},{pump:5,duration:45},{pump:4,duration:300}],
+    runCount:11, lastRun:'5d ago'
+  },
+  {
+    id:'p4', name:'Strip & reprobe',
+    note:'Mild stripping cycle before re-blocking.',
+    steps:[{pump:5,duration:60},{pump:4,duration:180},{pump:5,duration:60},{pump:3,duration:300}],
+    runCount:2, lastRun:'3w ago'
+  }
+];
+
+// Sequence builder draft (published as cmd/sequence on "Start Sequence").
+let draftSteps = [];
+
+// Rolling activity log — mirrors easyblot/status/log.
+let logLines = [
+  {t:'09:38:02', msg:'Sequence started — 6 steps queued.'},
+  {t:'09:38:02', msg:'Pump 3 (Blocking) started — 300s.'},
+  {t:'09:43:02', msg:'Pump 3 (Blocking) complete.'},
+  {t:'09:43:03', msg:'Pump 5 (Drain) started — 45s.'},
+  {t:'09:43:48', msg:'Pump 4 (Wash Buffer) started — 300s.'}
+];
+
+// Mon..Sun blot counts. Kept in sync with currentUser.blotsWeek by logBlot().
+let weeklyUsage = [0,1,0,2,1,0,0];
+
+/* ----------------------------------------------------------------
+   2. UI STATE
+   ---------------------------------------------------------------- */
+let activeTab       = 'home';
+let lbPeriod        = 'week';     // 'week' | 'alltime'
+let forumCategory   = 'All';
+let forumQuery      = '';
+let forumPage       = 1;          // "Load more" pagination
+let openThreadId    = null;
+let openSheetName   = null;
+let authStep        = 'signup';   // 'signup' | 'verify' | 'login' | null (done)
+let stopConfirm     = false;      // inline Stop All confirmation on Home
+let modalState      = null;
+
+const FORUM_PAGE_SIZE = 15;
+
+// ---- User titles (flair) -------------------------------------------------
+// Earned from lifetime forum activity and shown next to the display name
+// everywhere it appears, the way subreddit flair works. This replaces the old
+// separate "Most Active in Forum" leaderboard: the standing travels with the
+// name instead of living on its own board. Thresholds are all-time on purpose
+// — a title should not blink out because someone had a quiet week.
+const FORUM_TITLES = [
+  {min:75, label:'Top Contributor', top:true},
+  {min:40, label:'Frequent Contributor'},
+  {min:15, label:'Contributor'}
+];
+
+function forumTitle(u){
+  const n = (u && u.forumTotal) || 0;
+  return FORUM_TITLES.find(t => n >= t.min) || null;
+}
+
+// Posts and replies store only an authorId, so flair is resolved from the
+// user record at render time and stays correct as counts change.
+function userById(id){
+  if(id === currentUser.id) return currentUser;
+  return users.find(u => u.id === id) || null;
+}
+function flairFor(id){ return flairTag(userById(id)); }
+
+// Renders the flair pill, or nothing for users below the first threshold.
+function flairTag(u){
+  const t = forumTitle(u);
+  return t ? ' <span class="flair' + (t.top?' top':'') + '">' + esc(t.label) + '</span>' : '';
+}
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s)
+  .replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const mmss = s => Math.floor(s/60) + ':' + String(Math.floor(s%60)).padStart(2,'0');
+const clockNow = () => new Date().toTimeString().slice(0,8);
+const roleOf = n => PUMP_ROLES[n-1];
+// Mon = 0 … Sun = 6, to match the weeklyUsage array.
+const todayIndex = () => (new Date().getDay() + 6) % 7;
+// Commands are only sendable when the device is paired AND reachable.
+const canCommand = () => device.paired && device.online;
+
+/* ----------------------------------------------------------------
+   3. LOG — every line here is what easyblot/status/log would deliver
+   ---------------------------------------------------------------- */
+function pushLog(msg){
+  logLines.push({t:clockNow(), msg});
+  if(logLines.length > 40) logLines.shift();
+  if(activeTab === 'home') renderLogStrip();
+}
+
+/* ----------------------------------------------------------------
+   4. COMMAND LAYER — the only four functions firmware needs to hook.
+      Today they mutate local state and append a log line; later each
+      becomes an MQTT publish + a status subscription that drives the
+      same state object.
+   ---------------------------------------------------------------- */
+
+// PUBLISH easyblot/cmd/pump  {pump, action:"on", duration}
+function cmdPumpOn(pumpId, duration){
+  const p = pumps[pumpId-1];
+  p.on = true;
+  p.remaining = duration || null;
+  pushLog('Pump ' + pumpId + ' (' + p.role + ') started — ' + (duration ? duration + 's.' : 'indefinite.'));
+}
+
+// PUBLISH easyblot/cmd/pump  {pump, action:"off", duration:null}
+function cmdPumpOff(pumpId, reason){
+  const p = pumps[pumpId-1];
+  p.on = false; p.remaining = null;
+  pushLog('Pump ' + pumpId + ' (' + p.role + ') ' + (reason || 'stopped') + '.');
+}
+
+// PUBLISH easyblot/cmd/sequence  {steps:[{pump,duration}, ...]}
+// `protocol` is app-side bookkeeping only — the payload on the wire is
+// still just the step list, so the firmware contract is unchanged.
+function cmdSequence(steps, protocol){
+  if(!steps.length || !canCommand()) return;
+  currentRun = {
+    active:true, steps:steps.map(s=>({...s})), index:0, remaining:steps[0].duration,
+    protocolId: protocol ? protocol.id : null,
+    protocolName: protocol ? protocol.name : null
+  };
+  pumps.forEach(p=>{p.on=false;p.remaining=null;});
+  pushLog('Sequence started — ' + (protocol ? '“' + protocol.name + '” · ' : '') +
+    steps.length + ' steps queued.');
+  cmdPumpOn(steps[0].pump, steps[0].duration);
+}
+
+// PUBLISH easyblot/cmd/stop  {}
+function cmdStopAll(){
+  const wasRunning = currentRun.active;
+  currentRun.active = false;
+  pumps.forEach(p=>{ p.on = false; p.remaining = null; });
+  pushLog('STOP ALL received — all pumps halted' + (wasRunning ? ' mid-sequence.' : '.'));
+  stopConfirm = false;
+  if(activeTab === 'home') renderHome();
+  if(openSheetName) renderSheet();
+}
+
+// A completed sequence is one logged blot — feeds the stat row, the weekly
+// chart, and the leaderboard from a single place.
+function logBlot(){
+  currentUser.blotsWeek++;
+  currentUser.blotsTotal++;
+  weeklyUsage[todayIndex()]++;
+  // Credit the protocol that produced it, so the library sorts by real use.
+  const p = savedProtocols.find(x=>x.id === currentRun.protocolId);
+  if(p){ p.runCount++; p.lastRun = 'Just now'; }
+}
+
+/* ----------------------------------------------------------------
+   5. TICK — stands in for inbound easyblot/status messages (1 Hz).
+      Updates targeted DOM nodes only, so open input fields keep focus.
+   ---------------------------------------------------------------- */
+setInterval(()=>{
+  let homeDirty = false, sheetDirty = false;
+
+  // --- Sequence progression ---
+  if(currentRun.active){
+    currentRun.remaining--;
+    if(currentRun.remaining <= 0){
+      const done = currentRun.steps[currentRun.index];
+      cmdPumpOff(done.pump, 'complete');
+      if(currentRun.index < currentRun.steps.length - 1){
+        currentRun.index++;
+        const nxt = currentRun.steps[currentRun.index];
+        currentRun.remaining = nxt.duration;
+        cmdPumpOn(nxt.pump, nxt.duration);   // next step's pump goes active
+      }else{
+        currentRun.active = false;
+        currentRun.remaining = 0;
+        pushLog('Sequence complete — blot logged.');
+        logBlot();
+      }
+      homeDirty = true; sheetDirty = true;
+    }else{
+      // Keep the sequence pump's own countdown in sync for Manual Control.
+      const seqPump = pumps[currentRun.steps[currentRun.index].pump - 1];
+      if(seqPump.on && seqPump.remaining !== null) seqPump.remaining = currentRun.remaining;
+    }
+  }
+
+  // --- Manually started timed pumps (anything not driven by the sequence) ---
+  const seqPumpId = currentRun.active ? currentRun.steps[currentRun.index].pump : null;
+  pumps.forEach(p=>{
+    if(!p.on || p.remaining === null || p.id === seqPumpId) return;
+    p.remaining--;
+    if(p.remaining <= 0){
+      cmdPumpOff(p.id, 'complete');
+      sheetDirty = true;
+    }
+  });
+
+  if(homeDirty && activeTab==='home') renderHome();
+  else if(activeTab==='home' && currentRun.active) updateRunTicker();
+
+  if(openSheetName === 'manual'){
+    if(sheetDirty) renderSheet();
+    else updateManualTickers();
+  }
+}, 1000);
+
+function updateRunTicker(){
+  const label = $('run-label'), bar = $('run-bar'), rem = $('run-remaining');
+  if(!label || !currentRun.active) return;
+  const step = currentRun.steps[currentRun.index];
+  label.textContent = 'Step ' + (currentRun.index+1) + ' of ' + currentRun.steps.length + ' — ' + roleOf(step.pump);
+  if(rem) rem.textContent = mmss(Math.max(0,currentRun.remaining)) + ' remaining';
+  if(bar) bar.style.width = runProgressPct() + '%';
+}
+
+// Text-only updates so the duration inputs never lose focus mid-typing.
+function updateManualTickers(){
+  pumps.forEach(p=>{
+    const el = $('prem-' + p.id);
+    if(el) el.textContent = pumpStatusText(p);
+  });
+}
+
+function pumpStatusText(p){
+  if(!p.on) return 'Idle';
+  if(p.remaining === null) return 'Running — indefinite';
+  return mmss(Math.max(0,p.remaining)) + ' left';
+}
+
+function runProgressPct(){
+  if(!currentRun.steps.length) return 0;
+  const total = currentRun.steps.reduce((a,s)=>a+s.duration,0);
+  if(!total) return 0;
+  let done = 0;
+  for(let i=0;i<currentRun.index;i++) done += currentRun.steps[i].duration;
+  done += currentRun.steps[currentRun.index].duration - Math.max(0,currentRun.remaining);
+  // One decimal: a 17-minute protocol would otherwise sit on the same whole
+  // percent for ~10s at a time and read as a stalled bar.
+  return Math.max(0, Math.min(100, Math.round(done/total*1000)/10));
+}
+
+/* ================================================================
+   MODAL HOST — styled replacement for confirm()/prompt().
+   cfg = {title, body, confirmLabel, cancelLabel, destructive, onConfirm}
+   onConfirm() returns false to keep the modal open (validation failed).
+   ================================================================ */
+function openModal(cfg){
+  modalState = cfg;
+  $('modal-scrim').classList.add('active');
+  renderModal();
+  const first = $('modal').querySelector('input,textarea');
+  if(first && first.focus) first.focus();
+}
+
+function closeModal(){
+  modalState = null;
+  $('modal-scrim').classList.remove('active');
+  $('modal').innerHTML = '';
+}
+
+function renderModal(){
+  if(!modalState) return;
+  const m = modalState;
+  $('modal').innerHTML =
+    '<h2>' + esc(m.title) + '</h2>' +
+    (m.body || '') +
+    '<div class="err" id="modal-err"></div>' +
+    '<div class="modal-actions">' +
+      '<button class="btn ghost" onclick="closeModal()">' + esc(m.cancelLabel || 'Cancel') + '</button>' +
+      '<button class="btn' + (m.destructive ? ' danger-solid' : '') + '" onclick="confirmModal()">' +
+        esc(m.confirmLabel || 'Confirm') + '</button>' +
+    '</div>';
+}
+
+function confirmModal(){
+  if(!modalState) return;
+  const keepOpen = modalState.onConfirm && modalState.onConfirm() === false;
+  if(!keepOpen) closeModal();
+}
+
+function setModalError(msg){
+  const el = $('modal-err');
+  if(!el) return;
+  el.textContent = msg;
+  el.classList.toggle('show', !!msg);
+}
+
+/* ================================================================
+   SCREEN: AUTH  (first-run only — skippable for prototyping)
+   → RN screens: SignUpScreen / VerifyEmailScreen / LoginScreen
+   ================================================================ */
+let signupDraft = {name:'', email:'', university:'', password:''};
+let devTapArmed = false;   // "Skip (dev)" needs a double-tap unless ?dev=1
+let devTapTimer = null;
+
+// Dev bypass is single-tap only when the page is opened with ?dev=1.
+const DEV_MODE = typeof location !== 'undefined' && /[?&]dev=1\b/.test(location.search || '');
+
+function renderAuth(){
+  const host = $('overlay-auth');
+  if(authStep === null){ host.classList.remove('active'); host.innerHTML = ''; return; }
+  host.classList.add('active');
+  host.innerHTML =
+    authStep==='signup' ? authSignUp() :
+    authStep==='verify' ? authVerify() : authLogin();
+}
+
+function authShell(inner){
+  return '<div style="flex:1;overflow-y:auto;padding:36px 26px 32px;display:flex;flex-direction:column;">' +
+    inner + devSkip() + '</div>';
+}
+
+// Deliberately small and muted so it never reads as a shipping affordance.
+function devSkip(){
+  return '<div style="text-align:center;margin-top:14px;">' +
+    '<button class="linkbtn tiny" id="dev-skip" onclick="tapDevSkip()">' +
+      (DEV_MODE ? 'Skip (dev)' : 'Skip (dev) — double-tap') +
+    '</button></div>';
+}
+
+function tapDevSkip(){
+  if(DEV_MODE || devTapArmed){ skipAuth(); return; }
+  devTapArmed = true;
+  const el = $('dev-skip');
+  if(el) el.textContent = 'Tap again to bypass';
+  clearTimeout(devTapTimer);
+  devTapTimer = setTimeout(()=>{
+    devTapArmed = false;
+    const e2 = $('dev-skip');
+    if(e2) e2.textContent = 'Skip (dev) — double-tap';
+  }, 1200);
+}
+
+function authSignUp(){
+  return authShell(
+    '<div style="font-size:12px;font-weight:700;letter-spacing:.14em;margin-bottom:34px;">EASYBLOT</div>' +
+    '<h1>Create your lab account</h1>' +
+    '<p class="sub">We verify with your .edu email so only real research labs join.</p>' +
+    '<div style="height:26px;"></div>' +
+
+    '<div class="field">' +
+      '<label>Full name</label>' +
+      '<input class="input" id="su-name" placeholder="Bharath Rajan" value="'+esc(signupDraft.name)+'" oninput="onNameInput(this)" />' +
+      '<div class="err" id="su-name-err">Enter your full name as your lab knows it.</div>' +
+    '</div>' +
+
+    '<div class="field">' +
+      '<label>University email</label>' +
+      '<input class="input" id="su-email" type="email" placeholder="you@university.edu" value="'+esc(signupDraft.email)+'" oninput="onEduInput(this)" />' +
+      '<div class="err" id="su-email-err">Use your university email — it must end in .edu.</div>' +
+    '</div>' +
+
+    '<div class="field">' +
+      '<label>University</label>' +
+      '<input class="input" id="su-uni" autocomplete="off" placeholder="Start typing…" value="'+esc(signupDraft.university)+'" ' +
+        'oninput="onUniInput(this)" onblur="setTimeout(hideSuggest,140)" />' +
+      '<div class="suggest" id="su-suggest"></div>' +
+      '<div class="caption" style="margin-top:6px;">Not listed? Type it in — free text is fine.</div>' +
+    '</div>' +
+
+    '<div class="field">' +
+      '<label>Password</label>' +
+      '<input class="input" id="su-pass" type="password" placeholder="At least 8 characters" value="'+esc(signupDraft.password)+'" oninput="onPassInput(this)" />' +
+      '<div class="err" id="su-pass-err">Password must be at least 8 characters.</div>' +
+    '</div>' +
+
+    '<div style="flex:1;min-height:18px;"></div>' +
+    '<button class="btn block" onclick="submitSignUp()">Create account</button>' +
+    '<div style="text-align:center;margin-top:18px;">' +
+      '<button class="linkbtn" onclick="goAuth(\'login\')">Already have an account? Log in</button>' +
+    '</div>'
+  );
+}
+
+function authVerify(){
+  return authShell(
+    '<div style="font-size:12px;font-weight:700;letter-spacing:.14em;margin-bottom:34px;">EASYBLOT</div>' +
+    '<div style="width:52px;height:52px;border-radius:14px;border:1px solid var(--g2);display:flex;align-items:center;justify-content:center;margin-bottom:22px;">' +
+      '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="1.5"><rect x="2" y="5" width="20" height="15" rx="2"/><path d="M2 7l10 7 10-7"/></svg>' +
+    '</div>' +
+    '<h1>Check your inbox</h1>' +
+    '<p class="sub">We sent a verification link to <strong style="color:var(--ink)">' +
+      esc(signupDraft.email || 'you@university.edu') + '</strong>. Open it on this device to confirm your lab affiliation.</p>' +
+    '<div class="card flat" style="margin-top:24px;">' +
+      '<div class="caption">Verification usually lands within a minute. Check spam if your institution filters external mail.</div>' +
+    '</div>' +
+    '<div id="resend-note" style="margin-top:12px;"></div>' +
+    '<div style="flex:1;min-height:18px;"></div>' +
+    '<button class="btn block" onclick="finishAuth()">I’ve verified</button>' +
+    '<div style="text-align:center;margin-top:18px;">' +
+      '<button class="linkbtn" onclick="resendVerification()">Resend email</button>' +
+    '</div>'
+  );
+}
+
+function authLogin(){
+  return authShell(
+    '<div style="font-size:12px;font-weight:700;letter-spacing:.14em;margin-bottom:34px;">EASYBLOT</div>' +
+    '<h1>Log in</h1>' +
+    '<p class="sub">Use the .edu address your device is registered to.</p>' +
+    '<div style="height:26px;"></div>' +
+    '<div class="field"><label>Email</label>' +
+      '<input class="input" id="li-email" type="email" placeholder="you@university.edu" />' +
+      '<div class="err" id="li-email-err">Enter the .edu address on your account.</div></div>' +
+    '<div class="field"><label>Password</label>' +
+      '<input class="input" id="li-pass" type="password" placeholder="••••••••" />' +
+      '<div class="err" id="li-pass-err">Enter your password.</div></div>' +
+    '<div style="text-align:right;margin-top:-4px;">' +
+      '<button class="linkbtn" onclick="forgotPassword()">Forgot password?</button></div>' +
+    '<div style="flex:1;min-height:18px;"></div>' +
+    '<button class="btn block" onclick="submitLogin()">Log in</button>' +
+    '<div style="text-align:center;margin-top:18px;">' +
+      '<button class="linkbtn" onclick="goAuth(\'signup\')">Need an account? Sign up</button>' +
+    '</div>'
+  );
+}
+
+function goAuth(step){ authStep = step; renderAuth(); }
+function finishAuth(){ authStep = null; renderAuth(); switchTab('home'); }
+function skipAuth(){ finishAuth(); }
+
+function resendVerification(){
+  const el = $('resend-note');
+  if(el) el.innerHTML = '<div class="ok-note">Verification email resent to ' +
+    esc(signupDraft.email || 'your inbox') + '.</div>';
+}
+
+function forgotPassword(){
+  openModal({
+    title:'Reset your password',
+    body:'<p class="sub">Password reset is not wired up in this prototype. On the real build we send a reset link to your .edu address.</p>',
+    confirmLabel:'Got it', cancelLabel:'Close'
+  });
+}
+
+/* --- Inline field validation (same pattern for every signup field) --- */
+function setFieldError(inputId, errId, bad){
+  const el = $(inputId), err = $(errId);
+  if(el) el.classList.toggle('error', bad);
+  if(err) err.classList.toggle('show', bad);
+  return !bad;
+}
+
+function onNameInput(el){
+  signupDraft.name = el.value;
+  if(el.value.trim()) setFieldError('su-name','su-name-err', false);
+}
+function onEduInput(el){
+  signupDraft.email = el.value;
+  setFieldError('su-email','su-email-err', el.value.length > 0 && !isEduEmail(el.value));
+}
+function onPassInput(el){
+  signupDraft.password = el.value;
+  if(el.value.length >= 8) setFieldError('su-pass','su-pass-err', false);
+}
+const isEduEmail = v => /^[^\s@]+@[^\s@]+\.edu$/i.test(String(v).trim());
+
+function onUniInput(el){
+  signupDraft.university = el.value;
+  const q = el.value.trim().toLowerCase();
+  const box = $('su-suggest');
+  if(!box) return;
+  if(!q){ box.classList.remove('show'); return; }
+  const hits = UNIVERSITIES.filter(u=>u.toLowerCase().includes(q)).slice(0,6);
+  if(!hits.length){ box.classList.remove('show'); return; }
+  box.innerHTML = hits.map((u,i)=>'<div onmousedown="pickUni(' + i + ')" data-u="' + esc(u) + '">' + esc(u) + '</div>').join('');
+  box.classList.add('show');
+}
+function pickUni(i){
+  const box = $('su-suggest');
+  const node = box && box.children[i];
+  if(!node) return;
+  const u = node.getAttribute('data-u');
+  signupDraft.university = u;
+  const input = $('su-uni');
+  if(input) input.value = u;
+  hideSuggest();
+}
+function hideSuggest(){ const b = $('su-suggest'); if(b) b.classList.remove('show'); }
+
+function submitSignUp(){
+  // Validate every field, then focus the first offender.
+  const okName = setFieldError('su-name','su-name-err', !signupDraft.name.trim());
+  const okMail = setFieldError('su-email','su-email-err', !isEduEmail(signupDraft.email));
+  const okPass = setFieldError('su-pass','su-pass-err', (signupDraft.password||'').length < 8);
+  const firstBad = !okName ? 'su-name' : !okMail ? 'su-email' : !okPass ? 'su-pass' : null;
+  if(firstBad){ const el = $(firstBad); if(el && el.focus) el.focus(); return; }
+  goAuth('verify');
+}
+
+function submitLogin(){
+  const email = ($('li-email') || {}).value || '';
+  const pass  = ($('li-pass')  || {}).value || '';
+  const okMail = setFieldError('li-email','li-email-err', !isEduEmail(email));
+  const okPass = setFieldError('li-pass','li-pass-err', !pass);
+  if(!okMail || !okPass) return;
+  finishAuth();
+}
+
+/* ================================================================
+   SCREEN: HOME
+   → RN screen: HomeScreen
+   ================================================================ */
+function renderHome(){
+  const running  = currentRun.active && currentRun.steps.length > 0;
+  const step     = running ? currentRun.steps[currentRun.index] : null;
+  const usable   = canCommand();
+
+  $('screen-home').innerHTML =
+    // --- Header -------------------------------------------------
+    '<div class="page-head">' +
+      '<div>' +
+        '<div class="caption">' + todayLabel() + '</div>' +
+        '<h1>Welcome back, ' + esc(currentUser.displayName) + '</h1>' +
+      '</div>' +
+      '<div class="avatar">' + esc(currentUser.initials) + '</div>' +
+    '</div>' +
+
+    deviceCard(running, step, usable) +
+
+    // --- Stat row (feeds the leaderboard) -----------------------
+    '<div style="display:flex;gap:12px;margin-bottom:14px;">' +
+      statTile('Blots this week', currentUser.blotsWeek) +
+      statTile('Total blots', currentUser.blotsTotal) +
+    '</div>' +
+
+    quickActions(running, usable) +
+
+    // --- Weekly usage micro-chart -------------------------------
+    '<div class="card">' +
+      '<div class="row" style="margin-bottom:14px;">' +
+        '<div class="eyebrow" style="margin:0;">This week</div>' +
+        '<div class="caption mono">' + weeklyUsage.reduce((a,b)=>a+b,0) + ' runs</div>' +
+      '</div>' +
+      weeklyChart() +
+    '</div>' +
+
+    // --- Activity log strip (easyblot/status/log) ---------------
+    '<div class="eyebrow">Activity</div>' +
+    '<div class="log" id="log-strip"></div>';
+
+  renderLogStrip();
+}
+
+// Device card mirrors easyblot/status. Three distinct states:
+// unpaired → offline → paired+online (idle or running).
+function deviceCard(running, step, usable){
+  if(!device.paired){
+    return '<div class="card">' +
+      '<div class="row">' +
+        '<div style="display:flex;align-items:center;gap:9px;">' +
+          '<span class="dot offline"></span><span class="name">No device paired</span>' +
+        '</div>' +
+        '<span class="pill dashed">Unpaired</span>' +
+      '</div>' +
+      '<div class="divider"></div>' +
+      '<div class="caption">Pair an EasyBlot unit over WiFi to run protocols from this account. ' +
+        'The device broadcasts as <strong style="color:var(--g4)">easyblot.local</strong> once it joins your network.</div>' +
+      '<button class="btn ghost block" style="margin-top:14px;" onclick="pairDevice()">Pair a device</button>' +
+    '</div>';
+  }
+
+  const head =
+    '<div class="row">' +
+      '<div style="display:flex;align-items:center;gap:9px;min-width:0;">' +
+        '<span class="dot ' + (device.online?'online':'offline') + '"></span>' +
+        '<span class="name" id="device-name">' + esc(device.name) + '</span>' +
+        '<button class="linkbtn" style="font-size:11px;" onclick="renameDevice()">Edit</button>' +
+      '</div>' +
+      '<span class="pill' + (device.online?' solid':' dashed') + '">' + (device.online?'Online':'Offline') + '</span>' +
+    '</div><div class="divider"></div>';
+
+  if(!device.online){
+    return '<div class="card">' + head +
+      '<div class="row" style="margin-bottom:10px;">' +
+        '<div class="name">Unreachable</div>' +
+        '<span class="pill dashed">No connection</span>' +
+      '</div>' +
+      '<div class="progress idle"><i style="width:100%"></i></div>' +
+      '<div class="caption" style="margin-top:9px;">' +
+        'This app cannot reach ' + esc(device.mdns) + ' on ' + esc(device.wifi) + '. ' +
+        'Commands are disabled until the unit reconnects. Any sequence already running continues on the device.' +
+      '</div>' +
+    '</div>';
+  }
+
+  if(running){
+    return '<div class="card">' + head +
+      (currentRun.protocolName
+        ? '<div class="eyebrow" style="margin-bottom:8px;">' + esc(currentRun.protocolName) + '</div>'
+        : '<div class="eyebrow" style="margin-bottom:8px;">Ad-hoc sequence</div>') +
+      '<div class="row" style="margin-bottom:10px;">' +
+        '<div class="name mono" id="run-label">Step ' + (currentRun.index+1) + ' of ' + currentRun.steps.length +
+          ' — ' + esc(roleOf(step.pump)) + '</div>' +
+        '<div class="caption mono" id="run-remaining">' + mmss(Math.max(0,currentRun.remaining)) + ' remaining</div>' +
+      '</div>' +
+      '<div class="progress"><i id="run-bar" style="width:' + runProgressPct() + '%"></i></div>' +
+      '<div class="caption" style="margin-top:9px;">Pump ' + step.pump + ' active — sequence running unattended.</div>' +
+    '</div>';
+  }
+
+  return '<div class="card">' + head +
+    '<div class="row" style="margin-bottom:10px;">' +
+      '<div class="name">Idle</div>' +
+      '<span class="pill ok">Last run complete</span>' +
+    '</div>' +
+    '<div class="progress"><i style="width:0"></i></div>' +
+    '<div class="caption" style="margin-top:9px;">No sequence queued. Device is holding at rest.</div>' +
+  '</div>';
+}
+
+function quickActions(running, usable){
+  // Inline destructive confirmation — replaces the action row in place rather
+  // than firing a native confirm(), since Stop All aborts a live run.
+  if(stopConfirm && running){
+    return '<div class="confirm-strip">' +
+      '<div class="msg">Stop the run in progress?</div>' +
+      '<div class="why">Step ' + (currentRun.index+1) + ' of ' + currentRun.steps.length +
+        ' will be aborted and every pump halts immediately. This blot will not be logged.</div>' +
+      '<div class="acts">' +
+        '<button class="btn ghost sm" onclick="stopConfirm=false;renderHome()">Keep running</button>' +
+        '<button class="btn danger-solid sm" onclick="cmdStopAll()">Stop All</button>' +
+      '</div>' +
+    '</div>';
+  }
+
+  return '<div style="display:flex;gap:9px;margin-bottom:' + (usable ? '20px' : '10px') + ';">' +
+      '<button class="btn sm" style="flex:1;" onclick="openSheet(\'protocol\')" ' + (usable?'':'disabled') + '>Run Protocol</button>' +
+      // cmd/stop — needs a live run AND a reachable device
+      '<button class="btn sm danger" style="flex:1;" onclick="askStopAll()" ' + (running && usable?'':'disabled') + '>Stop All</button>' +
+      '<button class="btn sm ghost" style="flex:1;" onclick="openSheet(\'manual\')" ' + (usable?'':'disabled') + '>Manual</button>' +
+    '</div>' +
+    (usable ? '' :
+      '<div class="caption" style="margin-bottom:20px;">' +
+        (device.paired
+          ? 'Controls are disabled while the device is offline. Reconnect it to ' + esc(device.wifi) + ' to send commands.'
+          : 'Controls are disabled until a device is paired to this account.') +
+      '</div>');
+}
+
+function askStopAll(){ stopConfirm = true; renderHome(); }
+
+function weeklyChart(){
+  const days = ['M','T','W','T','F','S','S'];
+  const ti = todayIndex();
+  return '<div class="chart">' +
+      weeklyUsage.map((v,i)=>
+        '<div class="bar' + (v>=2?' hi':'') + (i===ti?' today':'') +
+        '" style="height:' + (v?Math.max(12,v*24):3) + 'px"></div>').join('') +
+    '</div>' +
+    '<div class="chart-x">' + days.map((d,i)=>'<span class="' + (i===ti?'today':'') + '">'+d+'</span>').join('') + '</div>';
+}
+
+function statTile(label, value){
+  return '<div class="card flat" style="flex:1;margin:0;padding:14px;">' +
+    '<div style="font-size:23px;font-weight:700;letter-spacing:-.03em;" class="mono">' + value + '</div>' +
+    '<div class="caption" style="margin-top:2px;">' + label + '</div>' +
+  '</div>';
+}
+
+function todayLabel(){
+  return new Date().toLocaleDateString('en-US',{weekday:'long', month:'short', day:'numeric'});
+}
+
+// Last 5 lines of easyblot/status/log, newest at the bottom.
+function renderLogStrip(){
+  const host = $('log-strip');
+  if(!host) return;
+  const last = logLines.slice(-5);
+  host.innerHTML = last.map((l,i)=>
+    '<div class="log-line' + (i===last.length-1?' fresh':'') + '">' +
+      '<span class="t mono">' + esc(l.t) + '</span><span class="grow">' + esc(l.msg) + '</span>' +
+    '</div>'
+  ).join('');
+}
+
+function renameDevice(){
+  openModal({
+    title:'Rename device',
+    body:'<p class="sub">This name is local to your account. It does not change the device’s mDNS address.</p>' +
+      '<div class="field" style="margin-top:16px;margin-bottom:0;">' +
+        '<input class="input" id="modal-devname" maxlength="32" value="' + esc(device.name) + '" />' +
+      '</div>',
+    confirmLabel:'Save',
+    onConfirm(){
+      const v = (($('modal-devname')||{}).value || '').trim();
+      if(!v){ setModalError('Device name cannot be empty.'); return false; }
+      if(v.length > 32){ setModalError('Keep it under 32 characters.'); return false; }
+      device.name = v;
+      renderHome(); renderSettings();
+    }
+  });
+}
+
+function pairDevice(){
+  openModal({
+    title:'Pair a device',
+    body:'<p class="sub">In the shipping app this scans for units broadcasting on your network. ' +
+      'For the prototype it re-pairs the mock unit.</p>',
+    confirmLabel:'Pair',
+    onConfirm(){
+      device.paired = true;
+      device.online = true;
+      device.name = device.name || 'EasyBlot — Bay 2';
+      pushLog('Device paired — ' + device.mdns + ' on ' + device.wifi + '.');
+      renderHome(); renderSettings();
+    }
+  });
+}
+
+/* ================================================================
+   SHEET: MANUAL CONTROL  → cmd/pump {pump, action, duration}
+   ================================================================ */
+function manualSheetHead(){
+  return '<div><h2>Manual Control</h2>' +
+    '<div class="caption" style="margin-top:3px;">Direct pump control. Blank duration runs until stopped.</div></div>' +
+    '<button class="iconbtn" onclick="requestCloseSheet()">✕</button>';
+}
+
+function manualSheetBody(){
+  const seqPumpId = currentRun.active ? currentRun.steps[currentRun.index].pump : null;
+
+  return pumps.map(p=>{
+    const locked = p.id === seqPumpId;   // driven by the running sequence
+    return '<div class="pump' + (p.on?' on':'') + (locked?' locked':'') + '">' +
+      '<div class="pnum">' + p.id + '</div>' +
+      '<div class="grow">' +
+        '<div class="name">' + esc(p.role) + '</div>' +
+        '<div class="meta" id="prem-' + p.id + '">' + esc(locked ? 'Sequence step — ' + pumpStatusText(p) : pumpStatusText(p)) + '</div>' +
+      '</div>' +
+      '<input class="dur" inputmode="numeric" placeholder="sec" value="' + esc(p.durationInput) + '" ' +
+        'oninput="setPumpDuration(' + p.id + ', this)" ' +
+        (p.on || locked ? 'disabled' : '') + ' />' +
+      '<div class="toggle' + (p.on?' on':'') + (locked?' disabled':'') + '" ' +
+        (locked ? '' : 'onclick="togglePump(' + p.id + ')"') + '></div>' +
+    '</div>';
+  }).join('') +
+  '<div class="caption" style="margin-top:16px;">' +
+    'Manual commands publish to <strong style="color:var(--g4)">cmd/pump</strong>. Pumps driven by a running ' +
+    'sequence are locked here so a manual toggle cannot desync the queue.' +
+  '</div>' +
+  '<button class="btn block danger" style="margin-top:14px;" onclick="stopAllFromSheet()">Stop All Pumps</button>';
+}
+
+function setPumpDuration(id, el){
+  const clean = el.value.replace(/[^0-9]/g,'').slice(0,4);
+  el.value = clean;
+  pumps[id-1].durationInput = clean;
+}
+
+function togglePump(id){
+  if(!canCommand()) return;
+  const p = pumps[id-1];
+  if(p.on){
+    cmdPumpOff(id);
+  }else{
+    const d = parseInt(p.durationInput,10);
+    cmdPumpOn(id, isNaN(d)||d<=0 ? null : d);
+  }
+  renderSheet();
+  if(activeTab==='home') renderLogStrip();
+}
+
+// Stop All from inside the sheet gets the same confirmation as Home.
+function stopAllFromSheet(){
+  const anyOn = pumps.some(p=>p.on) || currentRun.active;
+  if(!anyOn){ cmdStopAll(); return; }
+  openModal({
+    title:'Stop all pumps?',
+    body:'<p class="sub">' + (currentRun.active
+      ? 'The sequence in progress will be aborted and this blot will not be logged.'
+      : 'Every running pump halts immediately.') + '</p>',
+    confirmLabel:'Stop All', destructive:true,
+    onConfirm(){ cmdStopAll(); }
+  });
+}
+
+/* ================================================================
+   SHEET: RUN PROTOCOL (step builder) → cmd/sequence {steps:[...]}
+   ================================================================ */
+let newStep = {pump:1, duration:''};
+
+/* The sheet has two views: the saved-protocol library, and the step builder
+   for one protocol (new or opened from the library). */
+let protocolView      = 'library';   // 'library' | 'builder'
+let editingProtocolId = null;        // null while building an unsaved protocol
+let draftName         = '';
+let protocolNotice    = '';          // transient confirmation line in the library
+
+const PROTO_NAME_MAX = 48;
+const stepsTotal = steps => steps.reduce((a,s)=>a+s.duration,0);
+
+function resetProtocolDraft(){
+  draftSteps = [];
+  newStep = {pump:1, duration:''};
+  protocolView = 'library';
+  editingProtocolId = null;
+  draftName = '';
+  protocolNotice = '';
+}
+
+function protocolSheetHead(){
+  if(protocolView === 'library'){
+    return '<div><h2>Protocols</h2>' +
+      '<div class="caption" style="margin-top:3px;">' +
+        (savedProtocols.length
+          ? savedProtocols.length + ' saved · tap one to run or edit'
+          : 'Build and save a protocol to reuse it') +
+      '</div></div>' +
+      '<button class="iconbtn" onclick="requestCloseSheet()">✕</button>';
+  }
+  const total = stepsTotal(draftSteps);
+  return '<div style="display:flex;align-items:center;gap:10px;min-width:0;">' +
+      '<button class="iconbtn" onclick="backToLibrary()">‹</button>' +
+      '<div style="min-width:0;">' +
+        '<h2>' + (editingProtocolId ? 'Edit protocol' : 'New protocol') + '</h2>' +
+        '<div class="caption" style="margin-top:3px;">' +
+          draftSteps.length + ' step' + (draftSteps.length===1?'':'s') +
+          (total ? ' — ' + mmss(total) + ' total' : '') +
+        '</div>' +
+      '</div>' +
+    '</div>' +
+    '<button class="iconbtn" onclick="requestCloseSheet()">✕</button>';
+}
+
+function protocolSheetBody(){
+  return protocolView === 'library' ? protocolLibraryBody() : protocolBuilderBody();
+}
+
+/* ---- Library view ---- */
+function protocolLibraryBody(){
+  const notice = protocolNotice
+    ? '<div class="ok-note" style="margin-bottom:14px;">' + esc(protocolNotice) + '</div>' : '';
+
+  if(!savedProtocols.length){
+    return notice +
+      '<div class="empty">No saved protocols yet.<br/>' +
+      'Save the wash sequences you run often — per target, per antibody, per bench routine.' +
+      '<div><button class="btn sm" onclick="newProtocol()">Create a protocol</button></div></div>';
+  }
+
+  return notice +
+    '<div style="border:1px solid var(--g2);border-radius:var(--r-lg);padding:0 14px;margin-bottom:14px;">' +
+      savedProtocols.map(p=>
+        '<div class="lrow" style="align-items:flex-start;">' +
+          '<div class="grow tappable" onclick="openProtocol(\'' + esc(p.id) + '\')">' +
+            '<div class="name">' + esc(p.name) + '</div>' +
+            '<div class="meta">' + p.steps.length + ' steps · ' + mmss(stepsTotal(p.steps)) +
+              ' · run ' + p.runCount + '×' + (p.lastRun ? ' · ' + esc(p.lastRun) : '') + '</div>' +
+            (p.note ? '<div class="caption" style="margin-top:4px;">' + esc(p.note) + '</div>' : '') +
+          '</div>' +
+          // Runs straight from the library — publishes cmd/sequence with these steps.
+          '<button class="btn sm ghost" onclick="runProtocol(\'' + esc(p.id) + '\')" ' +
+            (canCommand()?'':'disabled') + '>Run</button>' +
+          '<button class="iconbtn" onclick="protocolMenu(\'' + esc(p.id) + '\')" title="More">⋯</button>' +
+        '</div>'
+      ).join('') +
+    '</div>' +
+    '<button class="btn ghost block" onclick="newProtocol()">New protocol</button>' +
+    '<div class="caption" style="margin-top:12px;">' +
+      (canCommand()
+        ? 'Protocol names are stored in your account only — the device receives just the step list.'
+        : 'Device is offline — protocols can be edited but not run.') +
+    '</div>';
+}
+
+function newProtocol(){
+  draftSteps = [];
+  newStep = {pump:1, duration:''};
+  editingProtocolId = null;
+  draftName = '';
+  protocolNotice = '';
+  protocolView = 'builder';
+  renderSheet();
+}
+
+function openProtocol(id){
+  const p = savedProtocols.find(x=>x.id===id);
+  if(!p) return;
+  editingProtocolId = p.id;
+  draftName = p.name;
+  draftSteps = p.steps.map(s=>({...s}));   // deep copy — edits stay uncommitted
+  newStep = {pump:1, duration:''};
+  protocolNotice = '';
+  protocolView = 'builder';
+  renderSheet();
+}
+
+function backToLibrary(){
+  if(protocolDirty()){
+    openModal({
+      title:'Discard unsaved changes?',
+      body:'<p class="sub">This protocol has edits you have not saved.</p>',
+      confirmLabel:'Discard', destructive:true,
+      onConfirm(){ protocolView='library'; editingProtocolId=null; draftName=''; draftSteps=[]; renderSheet(); }
+    });
+    return;
+  }
+  protocolView = 'library';
+  editingProtocolId = null;
+  draftName = '';
+  draftSteps = [];
+  renderSheet();
+}
+
+// Unsaved-change detection: compares the draft to its saved counterpart.
+function protocolDirty(){
+  if(protocolView !== 'builder') return false;
+  const saved = savedProtocols.find(p=>p.id===editingProtocolId);
+  if(!saved) return draftSteps.length > 0 || draftName.trim().length > 0;
+  return draftName.trim() !== saved.name ||
+         JSON.stringify(draftSteps) !== JSON.stringify(saved.steps);
+}
+
+function protocolMenu(id){
+  const p = savedProtocols.find(x=>x.id===id);
+  if(!p) return;
+  openModal({
+    title:esc(p.name),
+    body:'<p class="sub">' + p.steps.length + ' steps · ' + mmss(stepsTotal(p.steps)) +
+        ' · run ' + p.runCount + ' times.</p>' +
+      '<div style="display:flex;flex-direction:column;gap:14px;align-items:flex-start;margin-top:16px;">' +
+        '<button class="linkbtn" onclick="closeModal();openProtocol(\'' + esc(p.id) + '\')">Edit steps</button>' +
+        '<button class="linkbtn" onclick="closeModal();duplicateProtocol(\'' + esc(p.id) + '\')">Duplicate</button>' +
+        '<button class="linkbtn danger" onclick="closeModal();deleteProtocol(\'' + esc(p.id) + '\')">Delete protocol</button>' +
+      '</div>',
+    confirmLabel:'Done', cancelLabel:'Close'
+  });
+}
+
+function duplicateProtocol(id){
+  const p = savedProtocols.find(x=>x.id===id);
+  if(!p) return;
+  const copy = {
+    id:'p' + Date.now(), name:uniqueProtocolName(p.name + ' (copy)'),
+    note:p.note, steps:p.steps.map(s=>({...s})), runCount:0, lastRun:null
+  };
+  savedProtocols.splice(savedProtocols.indexOf(p) + 1, 0, copy);
+  protocolNotice = 'Duplicated as “' + copy.name + '”.';
+  renderSheet();
+}
+
+function deleteProtocol(id){
+  const p = savedProtocols.find(x=>x.id===id);
+  if(!p) return;
+  openModal({
+    title:'Delete “' + p.name + '”?',
+    body:'<p class="sub">The saved protocol is removed from your library. ' +
+      'Runs already logged against it are unaffected.</p>',
+    confirmLabel:'Delete', destructive:true,
+    onConfirm(){
+      savedProtocols = savedProtocols.filter(x=>x.id!==id);
+      if(editingProtocolId === id){ editingProtocolId = null; draftSteps = []; draftName = ''; }
+      protocolView = 'library';
+      protocolNotice = 'Deleted “' + p.name + '”.';
+      renderSheet();
+    }
+  });
+}
+
+function uniqueProtocolName(base, ignoreId){
+  let name = base, n = 2;
+  const taken = v => savedProtocols.some(p=>p.id!==ignoreId && p.name.toLowerCase()===v.toLowerCase());
+  while(taken(name)) name = base + ' ' + (n++);
+  return name;
+}
+
+function validateProtocol(){
+  const name = draftName.trim();
+  if(!name) return 'Give the protocol a name.';
+  if(name.length > PROTO_NAME_MAX) return 'Keep the name to ' + PROTO_NAME_MAX + ' characters or fewer.';
+  if(!draftSteps.length) return 'Add at least one step before saving.';
+  if(savedProtocols.some(p=>p.id!==editingProtocolId && p.name.toLowerCase()===name.toLowerCase()))
+    return 'You already have a protocol with that name.';
+  return null;
+}
+
+function saveProtocol(asCopy){
+  const problem = validateProtocol();
+  if(problem){
+    const err = $('proto-name-err');
+    if(err){ err.textContent = problem; err.classList.add('show'); }
+    const el = $('proto-name'); if(el && el.focus && !draftName.trim()) el.focus();
+    return false;
+  }
+  const name = draftName.trim();
+  const existing = savedProtocols.find(p=>p.id===editingProtocolId);
+
+  if(existing && !asCopy){
+    existing.name = name;
+    existing.steps = draftSteps.map(s=>({...s}));
+    protocolNotice = 'Saved “' + name + '”.';
+  }else{
+    const created = {
+      id:'p' + Date.now(),
+      name: asCopy ? uniqueProtocolName(name + ' (copy)') : name,
+      note: existing ? existing.note : '',
+      steps: draftSteps.map(s=>({...s})), runCount:0, lastRun:null
+    };
+    savedProtocols.push(created);
+    protocolNotice = 'Saved “' + created.name + '”.';
+  }
+  protocolView = 'library';
+  editingProtocolId = null;
+  draftName = '';
+  draftSteps = [];
+  renderSheet();
+  return true;
+}
+
+// Run a saved protocol without opening the builder.
+function runProtocol(id){
+  const p = savedProtocols.find(x=>x.id===id);
+  if(!p || !canCommand()) return;
+  launchSequence(p.steps, p);
+}
+
+/* ---- Builder view ---- */
+function protocolBuilderBody(){
+  const list = draftSteps.length
+    ? draftSteps.map((s,i)=>
+        '<div class="step">' +
+          '<div class="step-n">' + (i+1) + '</div>' +
+          '<div class="grow">' +
+            '<div class="name">Pump ' + s.pump + ' — ' + esc(roleOf(s.pump)) + '</div>' +
+            '<div class="meta mono">' + s.duration + 's</div>' +
+          '</div>' +
+          '<button class="iconbtn" onclick="moveStep(' + i + ',-1)" ' + (i===0?'disabled':'') + '>↑</button>' +
+          '<button class="iconbtn" onclick="moveStep(' + i + ',1)" ' + (i===draftSteps.length-1?'disabled':'') + '>↓</button>' +
+          '<button class="iconbtn danger" onclick="removeStep(' + i + ')">✕</button>' +
+        '</div>')
+      .join('')
+    : '<div class="empty">No steps yet.<br/>Add a pump and a duration to build a sequence.</div>';
+
+  const pumpOpts = pumps.map(p=>
+    '<option value="' + p.id + '"' + (newStep.pump===p.id?' selected':'') + '>' + p.id + ' — ' + esc(p.role) + '</option>'
+  ).join('');
+
+  return '<div class="field">' +
+      '<label>Protocol name</label>' +
+      '<input class="input" id="proto-name" maxlength="' + PROTO_NAME_MAX + '" ' +
+        'placeholder="e.g. Phospho-ERK — low abundance" value="' + esc(draftName) + '" ' +
+        'oninput="onProtocolName(this)" />' +
+      '<div class="err" id="proto-name-err"></div>' +
+    '</div>' +
+
+    '<div class="eyebrow">Sequence</div>' +
+    '<div style="border:1px solid var(--g2);border-radius:var(--r-lg);padding:0 14px;margin-bottom:6px;">' + list + '</div>' +
+    '<div class="err" id="step-err">Enter a duration in seconds (1–9999) before adding a step.</div>' +
+
+    '<div class="eyebrow" style="margin-top:16px;">Add step</div>' +
+    '<div style="display:flex;gap:9px;align-items:center;margin-bottom:16px;">' +
+      '<select class="input" style="flex:1;" onchange="newStep.pump=parseInt(this.value,10)">' + pumpOpts + '</select>' +
+      '<input class="input" id="step-dur" style="width:82px;text-align:center;" inputmode="numeric" placeholder="sec" ' +
+        'value="' + esc(newStep.duration) + '" oninput="setStepDuration(this)" />' +
+      '<button class="btn sm" onclick="addStep()">Add</button>' +
+    '</div>' +
+
+    '<div style="display:flex;gap:9px;margin-bottom:12px;">' +
+      '<button class="btn ghost" style="flex:1;" onclick="saveProtocol(false)" ' +
+        (draftSteps.length?'':'disabled') + '>Save protocol</button>' +
+      // Publishes cmd/sequence {steps:[{pump,duration}, ...]}
+      '<button class="btn" style="flex:1;" onclick="startSequence()" ' +
+        (draftSteps.length && canCommand() ? '' : 'disabled') + '>Start Sequence</button>' +
+    '</div>' +
+
+    (editingProtocolId
+      ? '<div style="text-align:center;margin-bottom:12px;">' +
+          '<button class="linkbtn" onclick="saveProtocol(true)">Save as a copy</button></div>'
+      : '') +
+
+    '<div class="caption">' +
+      (canCommand()
+        ? 'Starting a sequence replaces any run in progress. The device continues unattended if the app disconnects.' +
+          (draftSteps.length && !draftName.trim() ? ' You can run this without saving it.' : '')
+        : 'Device is offline — sequences cannot be started until it reconnects.') +
+    '</div>';
+}
+
+function onProtocolName(el){
+  draftName = el.value;
+  const err = $('proto-name-err');
+  if(err && draftName.trim()) err.classList.remove('show');
+}
+
+function setStepDuration(el){
+  const clean = el.value.replace(/[^0-9]/g,'').slice(0,4);
+  el.value = clean;
+  newStep.duration = clean;
+  const err = $('step-err');
+  if(err && clean) err.classList.remove('show');
+}
+
+function addStep(){
+  const d = parseInt(newStep.duration,10);
+  if(isNaN(d) || d<=0){
+    const err = $('step-err');
+    if(err) err.classList.add('show');
+    const el = $('step-dur'); if(el && el.focus) el.focus();
+    return;
+  }
+  draftSteps.push({pump:newStep.pump, duration:d});
+  newStep.duration = '';
+  renderSheet();
+}
+function removeStep(i){ draftSteps.splice(i,1); renderSheet(); }
+function moveStep(i,dir){
+  const j = i+dir;
+  if(j<0 || j>=draftSteps.length) return;
+  const tmp = draftSteps[i];
+  draftSteps[i] = draftSteps[j];
+  draftSteps[j] = tmp;
+  renderSheet();
+}
+// Starts the protocol currently open in the builder (saved or ad-hoc).
+function startSequence(){
+  if(!draftSteps.length || !canCommand()) return;
+  const saved = savedProtocols.find(p=>p.id===editingProtocolId);
+  // Unsaved edits still run — they just run as an ad-hoc sequence, so the
+  // saved protocol's stats are not credited with steps it does not contain.
+  const meta = saved && !protocolDirty() ? saved : null;
+  launchSequence(draftSteps, meta);
+}
+
+// Single entry point for every "start a run" path (builder + library row).
+function launchSequence(steps, protocol){
+  if(!steps.length || !canCommand()) return;
+  const stepsCopy = steps.map(s=>({...s}));
+  const run = () => {
+    cmdSequence(stepsCopy, protocol);
+    closeSheet(true);
+    switchTab('home');
+  };
+  if(currentRun.active){
+    openModal({
+      title:'Replace the running sequence?',
+      body:'<p class="sub">' + (currentRun.protocolName
+          ? '“' + esc(currentRun.protocolName) + '” is still running. '
+          : 'A sequence is already in progress. ') +
+        'Starting a new one aborts it immediately and the in-flight blot will not be logged.</p>',
+      confirmLabel:'Replace run', destructive:true,
+      onConfirm(){ run(); }
+    });
+    return;
+  }
+  run();
+}
+
+/* ================================================================
+   SCREEN: LEADERBOARD
+   → RN screen: LeaderboardScreen
+   University is never rendered here — display name only, by design.
+   ================================================================ */
+const LB_TOP_N = 10;
+
+// Ordering rule: value descending, ties broken by ascending user id so the
+// list is deterministic across re-renders instead of relying on sort stability.
+function leaderboardRows(){
+  const all = users.concat([{
+    id:currentUser.id, displayName:currentUser.displayName, initials:currentUser.initials,
+    blotsWeek:currentUser.blotsWeek, blotsTotal:currentUser.blotsTotal,
+    forumWeek:currentUser.forumWeek, forumTotal:currentUser.forumTotal
+  }]);
+
+  const key = lbPeriod==='week' ? 'blotsWeek' : 'blotsTotal';
+
+  return all
+    .map(u=>({...u, value:u[key]}))
+    .sort((a,b)=> (b.value - a.value) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+    .map((u,i)=>({...u, rank:i+1}));
+}
+
+function unitLabel(){
+  return 'blots run ' + (lbPeriod==='week' ? 'this week' : 'all time');
+}
+
+// "Active" means a wash is running on that user's device right now. For the
+// current user it is read live off currentRun rather than a stored flag, so
+// the indicator appears the moment they start a sequence.
+// Firmware hookup: this is presence derived from easyblot/status.
+function isActiveNow(u){
+  if(u.id === currentUser.id) return currentRun.active && device.paired;
+  return !!u.activeNow;
+}
+
+// Avatar plus the live-activity dot, used by both the hero card and the rows.
+function avatarWithStatus(u, cls){
+  return '<span class="av-wrap' + (cls && cls.indexOf('lg')>=0 ? ' lg' : '') + '">' +
+    '<span class="avatar ' + (cls||'') + '">' + esc(u.initials) + '</span>' +
+    (isActiveNow(u) ? '<span class="av-dot" title="Running a wash now"></span>' : '') +
+  '</span>';
+}
+
+function renderLeaderboard(){
+  const rows = leaderboardRows();
+  const top  = rows.slice(0, LB_TOP_N);
+  const mine = rows.find(u=>u.id===currentUser.id);
+  const hero = rows[0];
+  const heroEmpty = !hero || hero.value === 0;
+  const liveCount = rows.filter(isActiveNow).length;
+
+  $('screen-leaderboard').innerHTML =
+    '<div class="page-head"><h1>Leaderboard</h1>' +
+      (liveCount ? '<span class="pill">' + liveCount + ' running now</span>' : '') +
+    '</div>' +
+
+    // Period filter — blot count is the only ranking now; forum standing
+    // travels with the display name as a title instead of its own board.
+    '<div class="seg">' +
+      '<button class="' + (lbPeriod==='week'?'active':'') + '" onclick="setLbPeriod(\'week\')">This Week</button>' +
+      '<button class="' + (lbPeriod==='alltime'?'active':'') + '" onclick="setLbPeriod(\'alltime\')">All Time</button>' +
+    '</div>' +
+
+    heroCard(hero, heroEmpty) +
+
+    '<div class="eyebrow" style="margin-top:20px;">Rankings</div>' +
+    '<div class="card" style="padding:2px 16px;">' +
+      top.map(u=>lbRow(u, u.id===currentUser.id)).join('') +
+    '</div>' +
+
+    // Pinned "your rank" row — users are usually well outside the top 10.
+    (mine && mine.rank > LB_TOP_N
+      ? '<div class="pinned">' + lbRow(mine, true, true) + '</div>' +
+        '<div class="caption" style="padding:8px 2px 0;">Your rank is pinned here when you fall outside the top ' + LB_TOP_N + '.</div>'
+      : '') +
+
+    // Legend — the dot is the only unlabelled glyph on the screen.
+    '<div class="caption" style="display:flex;align-items:center;gap:7px;padding:14px 2px 0;">' +
+      '<span class="av-wrap" style="width:11px;height:11px;"><span class="av-dot" style="right:0;bottom:0;"></span></span>' +
+      '<span style="margin-left:5px;">Running a wash right now.</span>' +
+    '</div>' +
+
+    '<div class="caption" style="padding:8px 2px 0;">' +
+      'Ranked by blots run. Titles next to a name are earned from forum activity. ' +
+      'Display names only — institutions are never published. ' +
+      'Ties are ordered by account age (earliest first).' +
+    '</div>';
+}
+
+function heroLabel(){
+  return lbPeriod==='week' ? 'Superuser of the Week' : 'All-Time Leader';
+}
+
+function heroCard(hero, empty){
+  if(empty){
+    // No crown for a zero — a brand-new week has no superuser yet.
+    return '<div class="card muted" style="text-align:center;padding:24px 18px;">' +
+      '<div class="eyebrow" style="margin-bottom:10px;">' + heroLabel() + '</div>' +
+      '<div class="name" style="font-size:15px;">Nobody has posted a score yet</div>' +
+      '<div class="caption" style="margin-top:6px;">The first logged run this week takes the top spot.</div>' +
+    '</div>';
+  }
+  const title = forumTitle(hero);
+  return '<div class="card" style="text-align:center;padding:22px 16px;">' +
+      '<div style="display:flex;justify-content:center;margin-bottom:12px;">' + crownIcon() + '</div>' +
+      '<div class="eyebrow" style="margin-bottom:14px;">' + heroLabel() + '</div>' +
+      '<div style="display:flex;justify-content:center;margin-bottom:12px;">' +
+        avatarWithStatus(hero, 'lg') +
+      '</div>' +
+      '<div style="font-size:19px;font-weight:700;letter-spacing:-.03em;">' + esc(hero.displayName) + '</div>' +
+      (title ? '<div style="margin-top:7px;">' + flairTag(hero).trim() + '</div>' : '') +
+      '<div class="sub" style="margin-top:6px;">' + hero.value + ' ' + unitLabel() +
+        (isActiveNow(hero) ? ' · running now' : '') + '</div>' +
+    '</div>';
+}
+
+function lbRow(u, isMe, pinned){
+  return '<div class="lrow"' +
+      (isMe && !pinned ? ' style="background:var(--g1);margin:0 -16px;padding-left:16px;padding-right:16px;"' : '') + '>' +
+      '<div class="rank">' + u.rank + '</div>' +
+      avatarWithStatus(u, 'sm' + (isMe?'':' outline')) +
+      '<div class="grow">' +
+        '<div class="name">' + esc(u.displayName) + (isMe?' <span class="caption">· you</span>':'') + '</div>' +
+        (forumTitle(u) ? '<div style="margin-top:4px;">' + flairTag(u).trim() + '</div>' : '') +
+      '</div>' +
+      '<div class="count">' + u.value + '</div>' +
+    '</div>';
+}
+
+function setLbPeriod(p){ lbPeriod = p; renderLeaderboard(); }
+
+function crownIcon(){
+  return '<svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#111" stroke-width="1.4" ' +
+    'stroke-linejoin="round"><path d="M3 8l4 4 5-7 5 7 4-4-2 11H5L3 8z"/></svg>';
+}
+
+/* ================================================================
+   SCREEN: FORUM  → RN screens: ForumListScreen / ThreadScreen
+   ================================================================ */
+function visibleThreads(){
+  const q = forumQuery.trim().toLowerCase();
+  return threads.filter(t =>
+    (forumCategory==='All' || t.category===forumCategory) &&
+    (!q || t.title.toLowerCase().includes(q))
+  );
+}
+
+function renderForum(){
+  // Shell renders once; the list re-renders on its own so the search field
+  // keeps focus and caret position between keystrokes.
+  $('screen-forum').innerHTML =
+    '<div class="page-head"><h1>Forum</h1><span class="pill">' + threads.length + ' threads</span></div>' +
+
+    '<div class="search">' +
+      '<svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>' +
+      '<input class="input" id="forum-search" placeholder="Search thread titles" ' +
+        'value="' + esc(forumQuery) + '" oninput="onForumSearch(this)" />' +
+      (forumQuery ? '<button class="linkbtn tiny clear" onclick="clearForumSearch()">Clear</button>' : '') +
+    '</div>' +
+
+    '<div class="chips">' +
+      FORUM_CATEGORIES.map(c=>
+        '<div class="chip' + (forumCategory===c?' active':'') + '" onclick="setForumCategory(\'' + c + '\')">' + c + '</div>'
+      ).join('') +
+    '</div>' +
+
+    '<div id="thread-list"></div>' +
+    '<div class="caption" style="padding:14px 2px 0;">Posts show display names only — no institution is attached.</div>';
+
+  renderThreadList();
+}
+
+function renderThreadList(){
+  const host = $('thread-list');
+  if(!host) return;
+  const list  = visibleThreads();
+  const shown = list.slice(0, forumPage * FORUM_PAGE_SIZE);
+
+  if(!list.length){ host.innerHTML = forumEmptyState(); return; }
+
+  host.innerHTML =
+    '<div class="card" style="padding:2px 16px;">' +
+      shown.map(t=>
+        '<div class="lrow tappable" style="align-items:flex-start;" onclick="openThread(\'' + esc(t.id) + '\')">' +
+          '<div class="avatar sm outline" style="margin-top:2px;">' + esc(t.authorInitials) + '</div>' +
+          '<div class="grow">' +
+            '<div style="font-size:14.5px;font-weight:600;letter-spacing:-.015em;line-height:1.35;">' + esc(t.title) + '</div>' +
+            '<div class="meta">' + esc(t.author) + (t.authorId===currentUser.id?' (you)':'') +
+              flairFor(t.authorId) +
+              ' · ' + t.replies.length + ' repl' + (t.replies.length===1?'y':'ies') +
+              ' · ' + esc(t.lastActivity) + '</div>' +
+          '</div>' +
+          '<span style="color:var(--g3);font-size:16px;line-height:1;margin-top:6px;">›</span>' +
+        '</div>'
+      ).join('') +
+    '</div>' +
+    // "Load more" appears once the filtered list exceeds one page.
+    (shown.length < list.length
+      ? '<button class="btn ghost block" onclick="forumPage++;renderThreadList()">' +
+          'Load more (' + (list.length - shown.length) + ' older)</button>'
+      : list.length > FORUM_PAGE_SIZE
+        ? '<div class="caption" style="text-align:center;padding:4px 0;">All ' + list.length + ' threads loaded.</div>'
+        : '');
+}
+
+function forumEmptyState(){
+  const where = forumQuery.trim()
+    ? 'No threads match “' + esc(forumQuery.trim()) + '”.'
+    : 'No threads in ' + esc(forumCategory) + ' yet.';
+  return '<div class="empty">' + where + '<br/>' +
+    (forumQuery.trim()
+      ? 'Try a different term, or start the thread yourself.'
+      : 'Be the first to write one — protocols and dead ends are both useful.') +
+    '<div><button class="btn sm" onclick="openSheet(\'newpost\')">Start a thread</button></div>' +
+  '</div>';
+}
+
+function onForumSearch(el){
+  forumQuery = el.value;
+  forumPage = 1;
+  renderThreadList();
+  // Toggle the Clear affordance without rebuilding the input itself.
+  const clear = document.querySelector('.search .clear');
+  if(!!forumQuery !== !!clear) renderForumSearchAffordance();
+}
+
+function renderForumSearchAffordance(){
+  const box = document.querySelector('.search');
+  if(!box) return;
+  const existing = box.querySelector('.clear');
+  if(forumQuery && !existing){
+    const b = document.createElement('button');
+    b.className = 'linkbtn tiny clear';
+    b.textContent = 'Clear';
+    b.onclick = clearForumSearch;
+    box.appendChild(b);
+  }else if(!forumQuery && existing){
+    existing.remove();
+  }
+}
+
+function clearForumSearch(){
+  forumQuery = '';
+  forumPage = 1;
+  renderForum();
+}
+
+function setForumCategory(c){
+  forumCategory = c;
+  forumPage = 1;
+  renderForum();
+}
+
+/* --- Thread detail --------------------------------------------- */
+function openThread(id){
+  const t = threads.find(x=>x.id===id);
+  if(!t){ closeThread(); return; }
+  openThreadId = id;
+  const host = $('overlay-thread');
+  host.classList.add('active');
+  $('fab').classList.remove('show');
+
+  const mineThread = t.authorId === currentUser.id;
+
+  host.innerHTML =
+    '<div class="navbar">' +
+      '<button class="iconbtn" onclick="closeThread()">‹</button>' +
+      '<div class="title">' + esc(t.category) + '</div>' +
+    '</div>' +
+    '<div style="flex:1;overflow-y:auto;padding:0 20px 12px;">' +
+      '<div style="padding-top:18px;">' +
+        '<h2 style="line-height:1.25;">' + esc(t.title) + '</h2>' +
+        '<div class="lrow" style="border:none;padding-bottom:0;">' +
+          avatarWithStatus({id:t.authorId, initials:t.authorInitials}, 'sm outline') +
+          '<div class="grow">' +
+            '<div class="name-row"><span class="name">' + esc(t.author) +
+              (mineThread?' <span class="caption">· you</span>':'') + '</span>' + flairFor(t.authorId) + '</div>' +
+            '<div class="meta">' + esc(t.lastActivity) + ' ago</div></div>' +
+        '</div>' +
+        '<div class="post" style="padding-top:6px;">' +
+          '<div class="body">' + esc(t.body) + '</div>' +
+          (mineThread
+            ? '<div class="owner-acts">' +
+                '<button class="linkbtn" onclick="editThread(\'' + esc(t.id) + '\')">Edit</button>' +
+                '<button class="linkbtn danger" onclick="deleteThread(\'' + esc(t.id) + '\')">Delete</button>' +
+              '</div>'
+            : '') +
+        '</div>' +
+      '</div>' +
+      '<div class="eyebrow" style="margin-top:18px;">' + t.replies.length +
+        (t.replies.length===1?' reply':' replies') + '</div>' +
+      (t.replies.length
+        ? t.replies.map(r=>{
+            const mine = r.authorId === currentUser.id;
+            return '<div class="post" style="padding-top:0;">' +
+              '<div class="lrow" style="border:none;padding:10px 0 0;">' +
+                avatarWithStatus({id:r.authorId, initials:r.initials}, 'sm outline') +
+                '<div class="grow">' +
+                  '<div class="name-row"><span class="name">' + esc(r.author) +
+                    (mine?' <span class="caption">· you</span>':'') + '</span>' + flairFor(r.authorId) + '</div>' +
+                  '<div class="meta">' + esc(r.time) + (r.time==='just now'?'':' ago') + '</div></div>' +
+              '</div>' +
+              '<div class="body">' + esc(r.body) + '</div>' +
+              (mine
+                ? '<div class="owner-acts">' +
+                    '<button class="linkbtn" onclick="editReply(\'' + esc(t.id) + '\',\'' + esc(r.id) + '\')">Edit</button>' +
+                    '<button class="linkbtn danger" onclick="deleteReply(\'' + esc(t.id) + '\',\'' + esc(r.id) + '\')">Delete</button>' +
+                  '</div>'
+                : '') +
+            '</div>';
+          }).join('')
+        : '<div class="empty">No replies yet. Add what you know.</div>') +
+    '</div>' +
+    '<div class="reply-bar">' +
+      '<input class="input" id="reply-input" placeholder="Write a reply…" style="flex:1;" ' +
+        'value="' + esc(replyDraft) + '" oninput="replyDraft=this.value" />' +
+      '<button class="btn sm" onclick="submitReply()">Post</button>' +
+    '</div>';
+}
+
+let replyDraft = '';
+
+function closeThread(){
+  openThreadId = null;
+  replyDraft = '';                       // never carry a draft into the next thread
+  const host = $('overlay-thread');
+  host.classList.remove('active');
+  host.innerHTML = '';
+  if(activeTab==='forum') $('fab').classList.add('show');
+}
+
+function submitReply(){
+  const el = $('reply-input');
+  const text = (el ? el.value : replyDraft).trim();
+  if(!text) return;
+  const t = threads.find(x=>x.id===openThreadId);
+  if(!t) return;
+  t.replies.push({
+    id:'r' + Date.now(), authorId:currentUser.id,
+    author:currentUser.displayName, initials:currentUser.initials,
+    time:'just now', body:text
+  });
+  t.lastActivity = 'just now';
+  currentUser.forumWeek++; currentUser.forumTotal++;
+  replyDraft = '';
+  openThread(openThreadId);
+  renderForum();
+}
+
+function editReply(threadId, replyId){
+  const t = threads.find(x=>x.id===threadId);
+  const r = t && t.replies.find(x=>x.id===replyId);
+  if(!r || r.authorId !== currentUser.id) return;
+  openModal({
+    title:'Edit reply',
+    body:'<div class="field" style="margin-top:14px;margin-bottom:0;">' +
+      '<textarea class="input" id="modal-reply" rows="5" style="resize:none;">' + esc(r.body) + '</textarea></div>',
+    confirmLabel:'Save',
+    onConfirm(){
+      const v = (($('modal-reply')||{}).value || '').trim();
+      if(!v){ setModalError('A reply cannot be empty. Delete it instead.'); return false; }
+      r.body = v;
+      r.time = 'just now';
+      openThread(threadId);
+    }
+  });
+}
+
+function deleteReply(threadId, replyId){
+  const t = threads.find(x=>x.id===threadId);
+  const r = t && t.replies.find(x=>x.id===replyId);
+  if(!r || r.authorId !== currentUser.id) return;
+  openModal({
+    title:'Delete this reply?',
+    body:'<p class="sub">It is removed from the thread for everyone. This cannot be undone.</p>',
+    confirmLabel:'Delete', destructive:true,
+    onConfirm(){
+      t.replies = t.replies.filter(x=>x.id!==replyId);
+      currentUser.forumWeek = Math.max(0, currentUser.forumWeek - 1);
+      currentUser.forumTotal = Math.max(0, currentUser.forumTotal - 1);
+      openThread(threadId);
+      renderForum();
+    }
+  });
+}
+
+function editThread(threadId){
+  const t = threads.find(x=>x.id===threadId);
+  if(!t || t.authorId !== currentUser.id) return;
+  postEditor = {mode:'edit', threadId};
+  newPost = {title:t.title, body:t.body, category:t.category};
+  openSheet('newpost');
+}
+
+function deleteThread(threadId){
+  const t = threads.find(x=>x.id===threadId);
+  if(!t || t.authorId !== currentUser.id) return;
+  openModal({
+    title:'Delete this thread?',
+    body:'<p class="sub">The post and all ' + t.replies.length + ' repl' +
+      (t.replies.length===1?'y':'ies') + ' are removed for everyone. This cannot be undone.</p>',
+    confirmLabel:'Delete', destructive:true,
+    onConfirm(){
+      threads = threads.filter(x=>x.id!==threadId);
+      currentUser.forumWeek = Math.max(0, currentUser.forumWeek - 1);
+      currentUser.forumTotal = Math.max(0, currentUser.forumTotal - 1);
+      closeThread();
+      renderForum();
+      renderLeaderboard();
+    }
+  });
+}
+
+/* --- Sheet: New Post / Edit Post -------------------------------- */
+let newPost = {title:'', body:'', category:'Troubleshooting'};
+let postEditor = {mode:'new', threadId:null};
+
+function resetPostDraft(){
+  newPost = {title:'', body:'', category:'Troubleshooting'};
+  postEditor = {mode:'new', threadId:null};
+}
+
+function newPostSheetHead(){
+  const editing = postEditor.mode === 'edit';
+  return '<div><h2>' + (editing ? 'Edit Post' : 'New Post') + '</h2>' +
+    '<div class="caption" style="margin-top:3px;">Posted as ' + esc(currentUser.displayName) + '</div></div>' +
+    '<button class="iconbtn" onclick="requestCloseSheet()">✕</button>';
+}
+
+function newPostSheetBody(){
+  const editing = postEditor.mode === 'edit';
+  return '<div class="field"><label>Category</label>' +
+      '<select class="input" onchange="newPost.category=this.value">' +
+        FORUM_CATEGORIES.filter(c=>c!=='All').map(c=>
+          '<option' + (newPost.category===c?' selected':'') + '>' + c + '</option>').join('') +
+      '</select></div>' +
+    '<div class="field"><label>Title</label>' +
+      '<input class="input" id="post-title" maxlength="120" value="' + esc(newPost.title) + '" ' +
+        'placeholder="Describe the issue or protocol" oninput="onPostTitle(this)" />' +
+      '<div class="err" id="post-title-err">Give the thread a title (at least 6 characters).</div></div>' +
+    '<div class="field"><label>Body</label>' +
+      '<textarea class="input" id="post-body" rows="5" style="resize:none;" ' +
+        'placeholder="Include firmware version, pump numbers, and durations where relevant." ' +
+        'oninput="newPost.body=this.value">' + esc(newPost.body) + '</textarea></div>' +
+    '<button class="btn block" onclick="submitPost()">' + (editing ? 'Save changes' : 'Post to Forum') + '</button>' +
+    '<div class="caption" style="margin-top:12px;">Your display name is shown. Your institution stays private.</div>';
+}
+
+function onPostTitle(el){
+  newPost.title = el.value;
+  if(el.value.trim().length >= 6) setFieldError('post-title','post-title-err', false);
+}
+
+function submitPost(){
+  if(!setFieldError('post-title','post-title-err', newPost.title.trim().length < 6)){
+    const el = $('post-title'); if(el && el.focus) el.focus();
+    return;
+  }
+  const body = newPost.body.trim() || '(no details provided)';
+
+  if(postEditor.mode === 'edit'){
+    const t = threads.find(x=>x.id===postEditor.threadId);
+    if(t && t.authorId === currentUser.id){
+      t.title = newPost.title.trim();
+      t.body = body;
+      t.category = newPost.category;
+      t.lastActivity = 'just now';
+    }
+    const id = postEditor.threadId;
+    closeSheet(true);
+    renderForum();
+    if(openThreadId === id) openThread(id);
+    return;
+  }
+
+  threads.unshift({
+    id:'t' + Date.now(), category:newPost.category, authorId:currentUser.id,
+    title:newPost.title.trim(), author:currentUser.displayName, authorInitials:currentUser.initials,
+    lastActivity:'just now', body, replies:[]
+  });
+  currentUser.forumWeek++; currentUser.forumTotal++;
+  closeSheet(true);
+  forumPage = 1;
+  renderForum();
+  renderLeaderboard();
+}
+
+/* ================================================================
+   SCREEN: SETTINGS  → RN screen: SettingsScreen
+   ================================================================ */
+function renderSettings(){
+  $('screen-settings').innerHTML =
+    '<div class="page-head"><h1>Settings</h1></div>' +
+
+    // --- Profile ------------------------------------------------
+    '<div class="eyebrow">Profile</div>' +
+    '<div class="card">' +
+      '<div class="lrow" style="border:none;padding-top:2px;">' +
+        '<div class="avatar lg">' + esc(currentUser.initials) + '</div>' +
+        '<div class="grow">' +
+          '<div class="name-row"><span class="name" style="font-size:16px;">' +
+            esc(currentUser.displayName) + '</span>' + flairTag(currentUser) + '</div>' +
+          '<div class="meta">' +
+            (forumTitle(currentUser)
+              ? 'Public display name and title'
+              : 'Public display name') +
+          '</div>' +
+        '</div>' +
+        '<button class="btn sm ghost" onclick="editDisplayName()">Edit</button>' +
+      '</div>' +
+      '<div class="divider"></div>' +
+      settingRow('Real name', currentUser.realName, 'Private') +
+      settingRow('University', currentUser.university, currentUser.showUniversity ? 'Public' : 'Private') +
+      '<div class="caption" style="margin-top:10px;">' +
+        (forumTitle(currentUser)
+          ? 'Your title comes from forum activity (' + currentUser.forumTotal + ' posts and replies) and appears next to your name.'
+          : 'Post ' + (FORUM_TITLES[FORUM_TITLES.length-1].min - currentUser.forumTotal) +
+            ' more times in the forum to earn a title next to your name.') +
+      '</div>' +
+    '</div>' +
+
+    // --- Privacy ------------------------------------------------
+    '<div class="eyebrow">Privacy</div>' +
+    '<div class="card">' +
+      '<div class="row">' +
+        '<div class="grow"><div class="name">Show my university on my public profile</div></div>' +
+        '<div class="toggle' + (currentUser.showUniversity?' on':'') + '" onclick="toggleUniversityPrivacy()"></div>' +
+      '</div>' +
+      '<div class="caption" style="margin-top:10px;">' +
+        'Off = your university stays private on the leaderboard and forum. Only your display name is shown.' +
+      '</div>' +
+    '</div>' +
+
+    // --- Device (easyblot/status) -------------------------------
+    '<div class="eyebrow">Device</div>' +
+    '<div class="card">' +
+      (device.paired
+        ? settingRow('Paired device', device.name, device.online ? 'Online' : 'Offline') +
+          settingRow('WiFi network', device.wifi, '') +
+          settingRow('Address', device.mdns, '') +
+          '<div class="divider"></div>' +
+          '<div class="row" style="margin-bottom:12px;">' +
+            '<div class="grow"><div class="caption">Simulate offline (prototype only)</div></div>' +
+            '<div class="toggle' + (!device.online?' on':'') + '" onclick="toggleSimulatedOffline()"></div>' +
+          '</div>' +
+          '<button class="linkbtn danger" onclick="forgetDevice()">Forget device</button>'
+        : '<div class="caption">No device paired to this account.</div>' +
+          '<button class="btn ghost block" style="margin-top:12px;" onclick="pairDevice()">Pair a device</button>'
+      ) +
+    '</div>' +
+
+    // --- Account ------------------------------------------------
+    '<div class="eyebrow">Account</div>' +
+    '<div class="card">' +
+      settingRow('Email', currentUser.email, 'Verified') +
+      '<div class="divider"></div>' +
+      '<div style="display:flex;flex-direction:column;gap:14px;align-items:flex-start;">' +
+        '<button class="linkbtn" onclick="changePassword()">Change password</button>' +
+        '<button class="linkbtn danger" onclick="logOut()">Log out</button>' +
+      '</div>' +
+    '</div>' +
+
+    '<div class="caption" style="text-align:center;padding:6px 0 10px;">EasyBlot v0.4.1 · firmware 1.2.0</div>';
+}
+
+function settingRow(label, value, tag){
+  return '<div class="row" style="padding:9px 0;">' +
+    '<div class="caption" style="flex:0 0 108px;">' + esc(label) + '</div>' +
+    '<div class="grow" style="font-size:14px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
+      esc(value) + '</div>' +
+    (tag ? '<span class="pill' + (tag==='Verified'||tag==='Online'?' ok':'') + '">' + esc(tag) + '</span>' : '') +
+  '</div>';
+}
+
+/* Display name rules — enforced here and mirrored in the caption so the
+   constraint is visible before the user trips it. */
+const NAME_MAX = 24;
+const NAME_OK  = /^[A-Za-z0-9][A-Za-z0-9 ._-]*$/;
+
+function validateDisplayName(v){
+  const name = String(v || '').trim();
+  if(!name) return 'Display name cannot be empty.';
+  if(name.length < 2) return 'Use at least 2 characters.';
+  if(name.length > NAME_MAX) return 'Keep it to ' + NAME_MAX + ' characters or fewer.';
+  if(!NAME_OK.test(name)) return 'Letters, numbers, spaces, and . _ - only.';
+  const taken = users.some(u=>u.displayName.toLowerCase() === name.toLowerCase());
+  if(taken) return 'That display name is already in use.';
+  return null;
+}
+
+function initialsFrom(name){
+  return name.trim().split(/[\s._-]+/).filter(Boolean)
+    .map(w=>w[0]).join('').slice(0,2).toUpperCase() || '?';
+}
+
+function editDisplayName(){
+  openModal({
+    title:'Edit display name',
+    body:'<p class="sub">This is what appears on the leaderboard and forum. Your real name stays private.</p>' +
+      '<div class="field" style="margin-top:16px;margin-bottom:0;">' +
+        '<input class="input" id="modal-name" maxlength="' + NAME_MAX + '" value="' + esc(currentUser.displayName) + '" />' +
+        '<div class="caption" style="margin-top:6px;">2–' + NAME_MAX + ' characters. Letters, numbers, spaces, and . _ - only.</div>' +
+      '</div>',
+    confirmLabel:'Save',
+    onConfirm(){
+      const v = (($('modal-name')||{}).value || '');
+      const problem = validateDisplayName(v);
+      if(problem){ setModalError(problem); return false; }
+      currentUser.displayName = v.trim();
+      currentUser.initials = initialsFrom(v);
+      // Existing posts carry the new display name too.
+      threads.forEach(t=>{
+        if(t.authorId===currentUser.id){ t.author = currentUser.displayName; t.authorInitials = currentUser.initials; }
+        t.replies.forEach(r=>{
+          if(r.authorId===currentUser.id){ r.author = currentUser.displayName; r.initials = currentUser.initials; }
+        });
+      });
+      renderSettings(); renderHome(); renderLeaderboard(); renderForum();
+      if(openThreadId) openThread(openThreadId);
+    }
+  });
+}
+
+function changePassword(){
+  openModal({
+    title:'Change password',
+    body:'<div class="field" style="margin-top:14px;"><label>Current password</label>' +
+        '<input class="input" id="pw-current" type="password" placeholder="••••••••" /></div>' +
+      '<div class="field"><label>New password</label>' +
+        '<input class="input" id="pw-new" type="password" placeholder="At least 8 characters" /></div>' +
+      '<div class="field" style="margin-bottom:0;"><label>Confirm new password</label>' +
+        '<input class="input" id="pw-confirm" type="password" placeholder="Re-enter it" /></div>',
+    confirmLabel:'Update',
+    onConfirm(){
+      const cur = (($('pw-current')||{}).value || '');
+      const nw  = (($('pw-new')||{}).value || '');
+      const cf  = (($('pw-confirm')||{}).value || '');
+      if(!cur){ setModalError('Enter your current password.'); return false; }
+      if(cur !== currentUser.password){ setModalError('Current password is incorrect.'); return false; }
+      if(nw.length < 8){ setModalError('New password must be at least 8 characters.'); return false; }
+      if(nw === cur){ setModalError('New password must differ from the current one.'); return false; }
+      if(nw !== cf){ setModalError('The two new passwords do not match.'); return false; }
+      currentUser.password = nw;
+      openModal({
+        title:'Password updated',
+        body:'<p class="sub">Your password has been changed. In the shipping build this also signs out other devices.</p>',
+        confirmLabel:'Done', cancelLabel:'Close'
+      });
+      return false;   // openModal above already replaced the contents
+    }
+  });
+}
+
+function toggleUniversityPrivacy(){
+  currentUser.showUniversity = !currentUser.showUniversity;
+  renderSettings();
+  // Leaderboard/forum output is unchanged either way in this prototype —
+  // institution is intentionally absent from every public surface.
+}
+
+function toggleSimulatedOffline(){
+  device.online = !device.online;
+  pushLog(device.online
+    ? 'Device reconnected — ' + device.mdns + ' reachable.'
+    : 'Device unreachable — connection lost.');
+  renderSettings(); renderHome();
+  if(openSheetName) renderSheet();
+}
+
+function forgetDevice(){
+  openModal({
+    title:'Forget ' + device.name + '?',
+    body:'<p class="sub">This account loses control of the unit and all quick actions are disabled. ' +
+      'Any sequence already queued keeps running on the device itself.</p>',
+    confirmLabel:'Forget device', destructive:true,
+    onConfirm(){
+      device.paired = false;
+      device.online = false;
+      currentRun.active = false;
+      pumps.forEach(p=>{p.on=false;p.remaining=null;});
+      pushLog('Device unpaired from this account.');
+      renderSettings(); renderHome();
+    }
+  });
+}
+
+function logOut(){
+  openModal({
+    title:'Log out?',
+    body:'<p class="sub">You will need your .edu email and password to sign back in. ' +
+      'Runs in progress continue on the device.</p>',
+    confirmLabel:'Log out', destructive:true,
+    onConfirm(){
+      closeSheet(true);
+      closeThread();
+      goAuth('login');
+    }
+  });
+}
+
+/* ================================================================
+   NAVIGATION — bottom tab bar
+   ================================================================ */
+const TABS = [
+  {id:'home',        label:'Home',        icon:'M3 10.5L12 3l9 7.5V21H3V10.5z'},
+  {id:'leaderboard', label:'Leaderboard', icon:'M4 20V11h4v9H4zm6 0V4h4v16h-4zm6 0v-6h4v6h-4z'},
+  {id:'forum',       label:'Forum',       icon:'M4 4h16v12H8l-4 4V4z'},
+  {id:'settings',    label:'Settings',    icon:'M12 8.5A3.5 3.5 0 1 0 12 15.5 3.5 3.5 0 0 0 12 8.5zM3.5 12l1.6-1.1-.5-2 1.9-1.1 1.6 1.2 1.8-.9L10.4 6h3.2l.5 2 1.8.9 1.6-1.2 1.9 1.1-.5 2L20.5 12l-1.6 1.1.5 2-1.9 1.1-1.6-1.2-1.8.9-.5 2h-3.2l-.5-2-1.8-.9-1.6 1.2-1.9-1.1.5-2L3.5 12z'}
+];
+
+function renderTabBar(){
+  $('tabbar').innerHTML = TABS.map(t=>
+    '<button class="tab' + (activeTab===t.id?' active':'') + '" onclick="switchTab(\'' + t.id + '\')">' +
+      '<svg viewBox="0 0 24 24" stroke-linejoin="round" stroke-linecap="round"><path d="' + t.icon + '"/></svg>' +
+      '<span>' + t.label + '</span>' +
+    '</button>'
+  ).join('');
+}
+
+function switchTab(tab){
+  activeTab = tab;
+  stopConfirm = false;          // never carry a pending confirm across screens
+  closeThread();
+  TABS.forEach(t=>$('screen-'+t.id).classList.toggle('active', t.id===tab));
+  $('fab').classList.toggle('show', tab==='forum');
+  renderTabBar();
+  if(tab==='home')        renderHome();
+  if(tab==='leaderboard') renderLeaderboard();
+  if(tab==='forum')       renderForum();
+  if(tab==='settings')    renderSettings();
+  $('screen-'+tab).scrollTop = 0;
+}
+
+/* ================================================================
+   SHEET HOST
+   Every sheet resets its own draft state on close, so reopening never
+   shows leftovers from a previous session.
+   ================================================================ */
+function openSheet(name){
+  if(name !== 'newpost') resetPostDraft();     // opening Manual/Protocol clears any post draft
+  if(name === 'protocol') resetProtocolDraft();// always land on the library
+  openSheetName = name;
+  $('scrim').classList.add('active');
+  renderSheet();
+}
+
+// Close requested by the user (scrim tap or ✕). Guards unsaved work.
+function requestCloseSheet(){
+  if(openSheetName === 'protocol' && protocolDirty()){
+    openModal({
+      title:editingProtocolId ? 'Discard unsaved changes?' : 'Discard this protocol?',
+      body:'<p class="sub">' + (editingProtocolId
+        ? 'Your edits to this protocol have not been saved.'
+        : draftSteps.length + ' step' + (draftSteps.length===1?'':'s') +
+          ' will be cleared. Save it first to keep it in your library.') + '</p>',
+      confirmLabel:'Discard', destructive:true,
+      onConfirm(){ closeSheet(true); }
+    });
+    return;
+  }
+  if(openSheetName === 'newpost' && (newPost.title.trim() || newPost.body.trim())){
+    openModal({
+      title:postEditor.mode==='edit' ? 'Discard changes?' : 'Discard this post?',
+      body:'<p class="sub">Your draft is not saved anywhere and will be lost.</p>',
+      confirmLabel:'Discard', destructive:true,
+      onConfirm(){ closeSheet(true); }
+    });
+    return;
+  }
+  closeSheet(true);
+}
+
+function closeSheet(reset){
+  const was = openSheetName;
+  openSheetName = null;
+  $('scrim').classList.remove('active');
+  $('sheet-head').innerHTML = '';
+  $('sheet-body').innerHTML = '';
+  if(reset === false) return;
+  // Reset per-sheet draft state.
+  if(was === 'protocol'){ resetProtocolDraft(); }
+  if(was === 'newpost'){ resetPostDraft(); }
+}
+
+function renderSheet(){
+  if(!openSheetName) return;
+  const map = {
+    manual:   [manualSheetHead,   manualSheetBody],
+    protocol: [protocolSheetHead, protocolSheetBody],
+    newpost:  [newPostSheetHead,  newPostSheetBody]
+  };
+  const pair = map[openSheetName];
+  if(!pair){ closeSheet(true); return; }
+  $('sheet-head').innerHTML = pair[0]();
+  $('sheet-body').innerHTML = pair[1]();
+}
+
+/* ================================================================
+   BOOT
+   ================================================================ */
+renderTabBar();
+switchTab('home');
+renderAuth();          // auth overlay sits on top until completed or skipped
+</script>
+</body>
+</html>
