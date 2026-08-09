@@ -16,6 +16,9 @@ export interface PublicUser {
 /** Full record — never leaves the data layer. */
 export interface StoredUser extends PublicUser {
   email: string;
+  firstName: string;
+  lastName: string;
+  /** Derived from firstName + lastName; kept for display in Settings. */
   realName: string;
   /** Institution accounts only; private unless showInstitution is on. */
   institution: string;

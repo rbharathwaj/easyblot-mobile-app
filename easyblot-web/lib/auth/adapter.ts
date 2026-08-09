@@ -27,7 +27,8 @@ const SESSION_TTL = 1000 * 60 * 60 * 24 * 14; // 14 days
 const CODE_TTL = 1000 * 60 * 15; // 15 minutes
 
 export class AuthError extends Error {
-  field?: 'email' | 'password' | 'displayName' | 'institution' | 'code';
+  field?: 'email' | 'password' | 'confirmPassword' | 'displayName' | 'institution' | 'code'
+    | 'firstName' | 'lastName';
   constructor(message: string, field?: AuthError['field']) {
     super(message);
     this.name = 'AuthError';
@@ -36,7 +37,8 @@ export class AuthError extends Error {
 }
 
 export interface SignUpInput {
-  realName: string;
+  firstName: string;
+  lastName: string;
   email: string;
   password: string;
   displayName: string;
@@ -95,10 +97,13 @@ export class LocalAuthAdapter implements AuthAdapter {
     const verdict = classifyEmail(email);
     if (!verdict.ok) throw new AuthError(verdict.message || 'Enter a valid email address.', 'email');
 
-    const realName = input.realName.trim();
-    if (!realName) throw new AuthError('Enter your full name.', 'displayName');
+    const firstName = input.firstName.trim();
+    const lastName = input.lastName.trim();
+    if (!firstName) throw new AuthError('Enter your first name.', 'firstName');
+    if (!lastName) throw new AuthError('Enter your last name.', 'lastName');
+    const realName = `${firstName} ${lastName}`;
 
-    const displayName = input.displayName.trim() || realName.split(/\s+/)[0];
+    const displayName = input.displayName.trim() || firstName;
     if (displayName.length < 2) throw new AuthError('Display name needs at least 2 characters.', 'displayName');
 
     const institution = input.institution.trim();
@@ -118,6 +123,8 @@ export class LocalAuthAdapter implements AuthAdapter {
     const user: StoredUser = {
       id: randomId('usr_'),
       email,
+      firstName,
+      lastName,
       realName,
       displayName,
       initials: initialsFrom(displayName),
