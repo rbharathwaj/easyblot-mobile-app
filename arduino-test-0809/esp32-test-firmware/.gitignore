@@ -1,0 +1,9 @@
+# Real Wi-Fi credentials must never be committed.
+# Copy arduino_secrets.example.h -> arduino_secrets.h and edit the copy.
+arduino_secrets.h
+
+# Arduino build output
+build/
+*.bin
+*.elf
+*.hex
