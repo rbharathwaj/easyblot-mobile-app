@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Btn, Field, Item } from '../../../components/ui';
+import Brand from '../../../components/Brand';
 import { spring } from '../../../components/motion';
 import { useAuth } from '../../../lib/auth/context';
 import { AuthError } from '../../../lib/auth/adapter';
@@ -44,7 +45,7 @@ export default function VerifyPage() {
 
   return (
     <form onSubmit={onSubmit} noValidate>
-      <Item><div className="auth-brand">EASYBLOT</div></Item>
+      <Item><Brand /></Item>
       <Item>
         <h1>Confirm your email</h1>
         <p className="sub">

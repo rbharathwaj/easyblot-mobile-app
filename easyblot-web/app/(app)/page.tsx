@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Avatar, Btn, Card, ConfirmDialog, Empty, Item, Modal, Page, Field, type ConfirmSpec } from '../../components/ui';
+import { Btn, Card, ConfirmDialog, Item, Modal, Page, Field, Sheet, type ConfirmSpec } from '../../components/ui';
 import { ease, spring } from '../../components/motion';
 import ManualControl from '../../components/ManualControl';
 import ProtocolSheet from '../../components/ProtocolSheet';
@@ -16,6 +16,7 @@ export default function HomePage() {
   const { user } = useAuth();
   const { device, run, log, weeklyUsage, canCommand, pairDevice, renameDevice, stopAll } = useStore();
   const [sheet, setSheet] = useState<'manual' | 'protocol' | null>(null);
+  const [logOpen, setLogOpen] = useState(false);
   const [confirmSpec, setConfirmSpec] = useState<ConfirmSpec | null>(null);
   const [stopConfirm, setStopConfirm] = useState(false);
   const [pairOpen, setPairOpen] = useState(false);
@@ -36,6 +37,8 @@ export default function HomePage() {
 
   return (
     <Page>
+      {/* No account avatar here — the account lives in the nav (rail chip on
+          desktop, fourth tab on phones), in exactly one place. */}
       <Item className="page-head">
         <div>
           <div className="caption">
@@ -43,7 +46,6 @@ export default function HomePage() {
           </div>
           <h1>Welcome back, {user.displayName}</h1>
         </div>
-        <Avatar user={{ initials: user.initials, activeNow: running }} />
       </Item>
 
       <div className="cols">
@@ -197,7 +199,14 @@ export default function HomePage() {
         {/* ---- Activity log (easyblot/status/log) ---- */}
         <div>
           <Item>
-            <div className="eyebrow">Activity</div>
+            <div className="row" style={{ alignItems: 'baseline' }}>
+              <div className="eyebrow">Activity</div>
+              {log.length > 6 && (
+                <button className="linkbtn tiny" onClick={() => setLogOpen(true)}>
+                  View all {log.length}
+                </button>
+              )}
+            </div>
             {log.length ? (
               <div className="log">
                 <AnimatePresence initial={false}>
@@ -231,6 +240,20 @@ export default function HomePage() {
         })} />
 
       <ProtocolSheet open={sheet === 'protocol'} onClose={() => setSheet(null)} confirm={setConfirmSpec} />
+
+      {/* Full log — the only other view of this data, opened from the strip
+          above rather than from a second place in the app. */}
+      <Sheet open={logOpen} onClose={() => setLogOpen(false)} title="Activity log"
+        subtitle={`${log.length} events from the device`}>
+        <div className="log">
+          {[...log].reverse().map((l, i) => (
+            <div key={`${l.t}-${i}`} className="log-line">
+              <span className="t mono">{l.t}</span>
+              <span className="grow">{l.msg}</span>
+            </div>
+          ))}
+        </div>
+      </Sheet>
 
       <Modal open={pairOpen} onClose={() => setPairOpen(false)}>
         <h2>Pair a device</h2>

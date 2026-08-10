@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Btn, Card, ConfirmDialog, Empty, Field, Item, Modal, Page, type ConfirmSpec } from '../../../../components/ui';
+import { Avatar, Btn, Card, ConfirmDialog, Empty, Field, Item, Modal, Page, type ConfirmSpec } from '../../../../components/ui';
 import { rowVariants } from '../../../../components/motion';
 import { useStore } from '../../../../lib/store';
 import { useAuth } from '../../../../lib/auth/context';
@@ -20,8 +20,9 @@ const ago = (ts: number) => {
 export default function ThreadPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, users } = useAuth();
   const { threads, addReply, updateReply, deleteReply, updateThread, deleteThread } = useStore();
+  const avatarOf = (id: string) => users.find((u) => u.id === id)?.avatar ?? null;
 
   const thread = threads.find((t) => t.id === id);
   const [reply, setReply] = useState('');
@@ -61,7 +62,8 @@ export default function ThreadPage() {
       <Item>
         <h1 style={{ lineHeight: 1.25 }}>{thread.title}</h1>
         <div className="lrow" style={{ border: 'none' }}>
-          <span className="avatar sm outline">{thread.authorInitials}</span>
+          <Avatar user={{ initials: thread.authorInitials, avatar: avatarOf(thread.authorId), activeNow: false }}
+            size="sm" outline />
           <div className="grow">
             <div className="name-row">
               <span className="name">{thread.author}</span>
@@ -105,7 +107,8 @@ export default function ThreadPage() {
               return (
                 <motion.div key={r.id} className="post" variants={rowVariants} initial="hidden" animate="show" exit="exit" layout>
                   <div className="lrow" style={{ border: 'none', padding: '4px 0 0' }}>
-                    <span className="avatar sm outline">{r.initials}</span>
+                    <Avatar user={{ initials: r.initials, avatar: avatarOf(r.authorId), activeNow: false }}
+                      size="sm" outline />
                     <div className="grow">
                       <div className="name-row">
                         <span className="name">{r.author}</span>

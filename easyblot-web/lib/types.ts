@@ -6,6 +6,8 @@ export interface PublicUser {
   id: string;
   displayName: string;
   initials: string;
+  /** Data-URL profile picture, or null to fall back to initials. */
+  avatar: string | null;
   tier: AccountTier;
   blotsWeek: number;
   blotsTotal: number;
@@ -133,6 +135,7 @@ export function toPublic(u: StoredUser): PublicUser {
     id: u.id,
     displayName: u.displayName,
     initials: u.initials,
+    avatar: u.avatar ?? null,
     tier: u.tier,
     blotsWeek: u.blotsWeek,
     blotsTotal: u.blotsTotal,

@@ -115,13 +115,19 @@ export function Toggle({ on, onChange, label }: { on: boolean; onChange(v: boole
 /* ---------- Avatar ---------- */
 
 export function Avatar({ user, size = 'md', outline }: {
-  user: Pick<PublicUser, 'initials' | 'activeNow'>; size?: 'sm' | 'md' | 'lg'; outline?: boolean;
+  user: Pick<PublicUser, 'initials' | 'activeNow'> & { avatar?: string | null };
+  size?: 'sm' | 'md' | 'lg';
+  outline?: boolean;
 }) {
+  const cls = `avatar ${size === 'sm' ? 'sm' : size === 'lg' ? 'lg' : ''}${outline && !user.avatar ? ' outline' : ''}`;
   return (
     <span className={`av-wrap${size === 'lg' ? ' lg' : ''}`}>
-      <span className={`avatar ${size === 'sm' ? 'sm' : size === 'lg' ? 'lg' : ''}${outline ? ' outline' : ''}`}>
-        {user.initials}
-      </span>
+      {user.avatar ? (
+        // eslint-disable-next-line @next/next/no-img-element -- data URL, no loader needed
+        <img className={`${cls} avatar-img`} src={user.avatar} alt="" />
+      ) : (
+        <span className={cls}>{user.initials}</span>
+      )}
       {user.activeNow && (
         <motion.span
           className="av-dot"

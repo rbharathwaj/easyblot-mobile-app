@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Btn, Card, Empty, Field, Item, Modal, Page } from '../../../components/ui';
+import { Avatar, Btn, Card, Empty, Field, Item, Modal, Page } from '../../../components/ui';
 import { rowVariants, spring } from '../../../components/motion';
 import { useStore } from '../../../lib/store';
 import { FORUM_CATEGORIES } from '../../../lib/types';
@@ -21,7 +21,10 @@ const ago = (ts: number) => {
 
 export default function ForumPage() {
   const { threads, addThread } = useStore();
-  const { user } = useAuth();
+  const { user, users } = useAuth();
+  // Posts store only an authorId, so the picture is resolved at render time
+  // and stays current when someone changes their photo.
+  const avatarOf = (id: string) => users.find((u) => u.id === id)?.avatar ?? null;
   const [query, setQuery] = useState('');
   const [category, setCategory] = useState<'All' | string>('All');
   const [page, setPage] = useState(1);
@@ -87,7 +90,12 @@ export default function ForumPage() {
               {shown.map((t) => (
                 <motion.div key={t.id} variants={rowVariants} initial="hidden" animate="show" exit="exit" layout>
                   <Link href={`/forum/${t.id}`} className="lrow tappable" style={{ alignItems: 'flex-start' }}>
-                    <span className="avatar sm outline" style={{ marginTop: 2 }}>{t.authorInitials}</span>
+                    <span style={{ marginTop: 2 }}>
+                      <Avatar
+                        user={{ initials: t.authorInitials, avatar: avatarOf(t.authorId), activeNow: false }}
+                        size="sm" outline
+                      />
+                    </span>
                     <span className="grow">
                       <span className="name" style={{ display: 'block', whiteSpace: 'normal' }}>{t.title}</span>
                       <span className="meta" style={{ display: 'block' }}>

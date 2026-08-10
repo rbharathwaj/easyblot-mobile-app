@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Btn, Field, Item } from '../../../components/ui';
+import Brand from '../../../components/Brand';
 import { useAuth } from '../../../lib/auth/context';
 import { AuthError } from '../../../lib/auth/adapter';
 
@@ -32,7 +33,7 @@ export default function LoginPage() {
 
   return (
     <form onSubmit={onSubmit} noValidate>
-      <Item><div className="auth-brand">EASYBLOT</div></Item>
+      <Item><Brand /></Item>
       <Item>
         <h1>Log in</h1>
         <p className="sub">Use the address your account was created with.</p>

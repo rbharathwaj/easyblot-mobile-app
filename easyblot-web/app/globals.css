@@ -60,7 +60,41 @@ h3{font-size:16px;font-weight:600;letter-spacing:-.02em;margin:0;}
 .avatar.outline{background:var(--bg);color:var(--ink);border:1px solid var(--g2);}
 .avatar.sm{width:28px;height:28px;font-size:11px;}
 .avatar.lg{width:64px;height:64px;font-size:22px;}
+.avatar-img{object-fit:cover;padding:0;border:1px solid var(--g2);}
 .av-wrap{position:relative;flex:0 0 auto;display:inline-flex;}
+/* Profile photo control in Settings */
+.photo-slot{position:relative;flex:0 0 auto;}
+.photo-busy{
+  position:absolute;inset:0;border-radius:50%;
+  border:2px solid var(--g2);border-top-color:var(--ink);
+  animation:spin .7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ---------- Avatar crop editor ---------- */
+.crop-stage{margin:18px auto 0;max-width:100%;}
+.crop-box{
+  position:relative;overflow:hidden;border-radius:var(--r-md);background:var(--g1);
+  display:flex;touch-action:none;user-select:none;
+}
+.crop-box.pannable{cursor:grab;}
+.crop-box.pannable:active{cursor:grabbing;}
+.crop-box img{position:absolute;max-width:none;pointer-events:none;}
+/* Circular cut-out: everything outside the circle is dimmed, so what you see
+   inside is exactly what gets saved. */
+.crop-mask{
+  position:absolute;inset:0;pointer-events:none;border-radius:var(--r-md);
+  box-shadow:0 0 0 9999px rgba(255,255,255,.72) inset;
+  -webkit-mask-image:radial-gradient(circle at 50% 50%, transparent 49.5%, #000 50%);
+  mask-image:radial-gradient(circle at 50% 50%, transparent 49.5%, #000 50%);
+}
+.crop-mask::after{
+  content:"";position:absolute;inset:0;border-radius:50%;
+  border:1px solid var(--g2);
+}
+.crop-controls{display:flex;align-items:center;gap:12px;margin-top:16px;}
+.crop-range{flex:1;accent-color:var(--ink);height:22px;cursor:pointer;}
+.crop-range:disabled{opacity:.4;}
 .av-dot{position:absolute;right:-1px;bottom:-1px;width:11px;height:11px;border-radius:50%;
   background:var(--ink);border:2px solid var(--bg);}
 .av-wrap.lg .av-dot{width:16px;height:16px;border-width:3px;right:1px;bottom:1px;}
@@ -209,14 +243,42 @@ textarea.input{resize:none;}
 .nav{position:fixed;bottom:0;left:0;right:0;height:78px;z-index:50;
   background:rgba(255,255,255,.94);backdrop-filter:blur(12px);border-top:1px solid var(--g2);
   display:flex;flex-direction:column;justify-content:flex-end;padding-bottom:env(safe-area-inset-bottom,0);}
-.nav-brand,.nav-foot{display:none;}
+.nav-brand{display:none;}
 .nav-items{display:flex;height:64px;}
+/* The rail chip is desktop-only; phones use the fourth tab cell. */
+.account-rail{display:none;}
+.account-tab{flex:1;display:flex;}
+.account-tab .tab{width:100%;}
+.avatar-btn{background:none;border:none;padding:0;cursor:pointer;display:inline-flex;}
 .tab{flex:1;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:4px;color:var(--g3);font-size:10px;font-weight:600;position:relative;}
 .tab svg{width:22px;height:22px;stroke:currentColor;stroke-width:1.6;fill:none;flex:0 0 auto;}
 .tab.active{color:var(--ink);}
 .tab.active svg{fill:currentColor;}
 .tab-marker{position:absolute;inset:0;border-radius:var(--r-sm);background:var(--g1);z-index:-1;}
+
+/* ---------- Account menu ---------- */
+.account-wrap{position:relative;}
+.account-pop{
+  position:absolute;z-index:60;min-width:224px;padding:6px;
+  background:var(--bg);border:1px solid var(--g2);border-radius:var(--r-md);
+  box-shadow:0 12px 32px rgba(17,17,17,.14);
+}
+/* Phones: rises from the tab bar. Desktop rail overrides below. */
+.account-tab .account-pop{bottom:calc(100% + 10px);right:6px;}
+.account-pop-head{padding:9px 10px 10px;border-bottom:1px solid var(--g2);margin-bottom:5px;}
+.account-pop-head .name{font-size:13.5px;}
+.account-pop-head .meta{overflow:hidden;text-overflow:ellipsis;}
+.account-item{
+  display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:none;
+  background:none;border-radius:8px;cursor:pointer;font-family:var(--font);font-size:13.5px;
+  font-weight:500;letter-spacing:-.01em;color:var(--ink);text-align:left;
+}
+.account-item:hover{background:var(--g1);}
+.account-item svg{flex:0 0 auto;color:var(--g4);}
+.account-item.danger{color:var(--red);}
+.account-item.danger svg{color:var(--red);}
+.chev{font-size:11px;color:var(--g3);flex:0 0 auto;line-height:1;}
 
 /* ---------- FAB ---------- */
 .fab{position:fixed;right:20px;bottom:94px;z-index:45;width:52px;height:52px;border-radius:50%;
@@ -243,6 +305,18 @@ textarea.input{resize:none;}
 .auth-wrap{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;}
 .auth-card{width:100%;max-width:440px;}
 .auth-brand{font-size:12px;font-weight:700;letter-spacing:.14em;margin-bottom:28px;}
+
+/* Brand lockup — the wordmark leads on auth screens. */
+.brand-lockup{margin-bottom:32px;}
+.brand-mark{font-size:32px;font-weight:700;letter-spacing:-.04em;line-height:1;}
+.brand-by{font-size:12.5px;color:var(--g4);letter-spacing:-.005em;margin-top:7px;}
+/* Page title steps down so the mark stays dominant and the two do not
+   read as competing headings. */
+.auth-card h1{font-size:21px;letter-spacing:-.03em;}
+@media (min-width:680px){
+  .brand-mark{font-size:36px;}
+  .auth-card h1{font-size:23px;}
+}
 .auth-foot{text-align:center;margin-top:18px;display:flex;flex-direction:column;gap:12px;}
 
 /* ---------- Posts ---------- */
@@ -273,15 +347,26 @@ textarea.input{resize:none;}
   .nav{top:0;bottom:0;right:auto;width:var(--nav-w);height:100vh;height:100dvh;
     border-top:none;border-right:1px solid var(--g2);background:var(--bg);backdrop-filter:none;
     flex-direction:column;justify-content:flex-start;padding:26px 16px 20px;}
-  .nav-brand{display:block;font-size:13px;font-weight:700;letter-spacing:.14em;padding:0 12px 26px;}
+  .nav-brand{display:block;padding:0 12px 26px;}
+  .nav-brand-mark{font-size:21px;font-weight:700;letter-spacing:-.035em;line-height:1;}
+  .nav-brand-by{font-size:11px;color:var(--g4);margin-top:5px;letter-spacing:-.005em;}
   .nav-items{flex-direction:column;height:auto;gap:2px;}
   .tab{flex:0 0 auto;flex-direction:row;justify-content:flex-start;gap:12px;padding:11px 12px;
     border-radius:var(--r-sm);font-size:14px;letter-spacing:-.01em;}
   .tab:hover{color:var(--ink);}
   .tab svg{width:19px;height:19px;}
-  .nav-foot{display:flex;align-items:center;gap:10px;margin-top:auto;padding:12px;
-    border-top:1px solid var(--g2);min-width:0;}
+
+  /* Account: rail chip replaces the mobile tab cell. */
+  .account-tab{display:none;}
+  .account-rail{display:block;margin-top:auto;}
+  .nav-foot{
+    display:flex;align-items:center;gap:10px;width:100%;padding:12px;
+    border:none;border-top:1px solid var(--g2);background:none;cursor:pointer;
+    border-radius:0;min-width:0;text-align:left;
+  }
+  .nav-foot:hover{background:var(--g1);}
   .nav-foot .name{font-size:13px;}
+  .account-rail .account-pop{bottom:calc(100% + 8px);left:0;right:0;min-width:0;}
   .shell{margin-left:var(--nav-w);}
   .main{padding:0 48px 64px;}
   .main > *{max-width:900px;}

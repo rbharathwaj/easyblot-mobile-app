@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Avatar, Btn, Card, ConfirmDialog, Field, Item, Modal, Page, Toggle, type ConfirmSpec } from '../../../components/ui';
 import { useAuth } from '../../../lib/auth/context';
@@ -8,6 +8,8 @@ import { AuthError } from '../../../lib/auth/adapter';
 import { TIER_LABEL } from '../../../lib/auth/email';
 import { checkPasswordStrength } from '../../../lib/auth/crypto';
 import { useStore } from '../../../lib/store';
+import AvatarEditor from '../../../components/AvatarEditor';
+import { ACCEPTED_IMAGE_TYPES, AVATAR_PX } from '../../../lib/avatar';
 import * as db from '../../../lib/db';
 
 export default function SettingsPage() {
@@ -23,6 +25,10 @@ export default function SettingsPage() {
   const [pw, setPw] = useState({ current: '', next: '', confirm: '' });
   const [pwError, setPwError] = useState<string | null>(null);
   const [pwDone, setPwDone] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
 
   if (!user) return null;
 
@@ -60,16 +66,47 @@ export default function SettingsPage() {
       <Item><div className="eyebrow">Profile</div></Item>
       <Item>
         <Card>
-          <div className="lrow" style={{ border: 'none' }}>
-            <Avatar user={{ initials: user.initials, activeNow: !!run?.active }} size="lg" />
+          <div className="lrow" style={{ border: 'none', alignItems: 'flex-start' }}>
+            <div className="photo-slot">
+              <Avatar user={{ initials: user.initials, avatar: user.avatar, activeNow: !!run?.active }} size="lg" />
+              {photoBusy && <div className="photo-busy" />}
+            </div>
             <div className="grow">
               <div className="name" style={{ fontSize: 16 }}>{user.displayName}</div>
               <div className="meta">Public display name</div>
+              <div className="owner-acts" style={{ marginTop: 8 }}>
+                <button className="linkbtn" onClick={() => fileRef.current?.click()} disabled={photoBusy}>
+                  {user.avatar ? 'Change photo' : 'Add photo'}
+                </button>
+                {user.avatar && (
+                  <button className="linkbtn danger" disabled={photoBusy}
+                    onClick={() => updateUser({ avatar: null })}>Remove</button>
+                )}
+              </div>
+              {photoError && <div className="err">{photoError}</div>}
+              {!photoError && (
+                <div className="caption" style={{ marginTop: 6 }}>
+                  Any image format your browser can open. Cropped and resized to {AVATAR_PX}px
+                  on your device — shown wherever your name appears.
+                </div>
+              )}
             </div>
             <Btn size="sm" variant="ghost" onClick={() => { setName(user.displayName); setNameError(null); setNameOpen(true); }}>
               Edit
             </Btn>
           </div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept={ACCEPTED_IMAGE_TYPES}
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0] ?? null;
+              e.target.value = ''; // allow re-picking the same file after a cancel
+              setPhotoError(null);
+              setPendingFile(file);
+            }}
+          />
           <div className="divider" />
           <SettingRow label="Account" value={TIER_LABEL[user.tier]} tag={user.verified ? 'Verified' : 'Unverified'} />
           <SettingRow label="Real name" value={user.realName} tag="Private" />
@@ -208,6 +245,17 @@ export default function SettingsPage() {
           </>
         )}
       </Modal>
+
+      <AvatarEditor
+        file={pendingFile}
+        onCancel={() => setPendingFile(null)}
+        onSave={async (dataUrl) => {
+          setPendingFile(null);
+          setPhotoBusy(true);
+          try { await updateUser({ avatar: dataUrl }); }
+          finally { setPhotoBusy(false); }
+        }}
+      />
 
       <ConfirmDialog spec={confirmSpec} onClose={() => setConfirmSpec(null)} />
     </Page>

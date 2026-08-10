@@ -9,6 +9,7 @@ import { ease } from '../../../components/motion';
 import { useAuth } from '../../../lib/auth/context';
 import { AuthError } from '../../../lib/auth/adapter';
 import { classifyEmail, domainOf, TIER_LABEL } from '../../../lib/auth/email';
+import Brand from '../../../components/Brand';
 import UniversityInput from '../../../components/UniversityInput';
 import { loadUniversities, universityForDomain } from '../../../lib/universities';
 import { checkPasswordStrength } from '../../../lib/auth/crypto';
@@ -84,7 +85,7 @@ export default function SignUpPage() {
 
   return (
     <form onSubmit={onSubmit} noValidate>
-      <Item><div className="auth-brand">EASYBLOT</div></Item>
+      <Item><Brand /></Item>
       <Item>
         <h1>Create your account</h1>
         <p className="sub">

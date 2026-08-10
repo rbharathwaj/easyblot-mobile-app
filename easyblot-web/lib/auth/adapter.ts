@@ -128,6 +128,7 @@ export class LocalAuthAdapter implements AuthAdapter {
       realName,
       displayName,
       initials: initialsFrom(displayName),
+      avatar: null,
       institution: verdict.tier === 'institution' ? institution : '',
       showInstitution: false,
       tier: verdict.tier,
